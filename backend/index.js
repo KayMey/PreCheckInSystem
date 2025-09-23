@@ -38,7 +38,15 @@ app.post("/bookings", async (req, res) => {
     const { data, error } = await supabase
       .from("bookings")
       .insert([
-        { booking_name, firstname, surname, schedule_date, schedule_time, cellphone, status: "not-prechecked" }
+        {
+          booking_name,
+          firstname,
+          surname,
+          schedule_date,
+          schedule_time,
+          cellphone,
+          status: "not-prechecked",
+        },
       ])
       .select();
 
@@ -77,22 +85,22 @@ app.post("/bookings", async (req, res) => {
   }
 });
 
-// Get all bookings
+// Get all bookings (with sort by date then time)
 app.get("/bookings", async (req, res) => {
   try {
     const { status } = req.query;
 
-    let query = supabase.from("bookings").select("*").order("schedule_time", { ascending: true });
+    let query = supabase
+      .from("bookings")
+      .select("*")
+      .order("schedule_date", { ascending: true })
+      .order("schedule_time", { ascending: true });
+
     if (status) {
       query = query.eq("status", status);
     }
 
     const { data, error } = await query;
-
-    console.log("Incoming status filter:", status);
-    console.log("Supabase returned data:", data);
-    console.log("Supabase error (if any):", error);
-
     if (error) throw error;
 
     res.json(data);
@@ -147,7 +155,7 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
         dropoff_firstname,
         dropoff_surname,
         dropoff_phone,
-        license_url: licenseUrl,
+        license_photo_url: licenseUrl,
         status: "prechecked",
       })
       .eq("id", id)
