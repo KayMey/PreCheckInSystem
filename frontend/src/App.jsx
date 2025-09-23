@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import CreateBooking from "./pages/CreateBooking";
 import ViewBookings from "./pages/ViewBookings";
@@ -8,6 +8,7 @@ function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<Navigate to="/employee" replace />} />
         <Route path="/employee" element={<Home />} />
         <Route path="/employee/create" element={<CreateBooking />} />
         <Route path="/employee/view" element={<ViewBookings />} />
