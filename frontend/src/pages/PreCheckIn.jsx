@@ -9,9 +9,14 @@ export default function PreCheckin() {
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // form state
+  const [dropoffFirstname, setDropoffFirstname] = useState("");
+  const [dropoffSurname, setDropoffSurname] = useState("");
+  const [dropoffPhone, setDropoffPhone] = useState("");
   const [file, setFile] = useState(null);
 
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL; // e.g. https://precheckinsystem.onrender.com
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
   // 🔹 Fetch booking details
   useEffect(() => {
@@ -28,7 +33,7 @@ export default function PreCheckin() {
     fetchBooking();
   }, [id]);
 
-  // 🔹 Handle file upload + confirmation
+  // 🔹 Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -38,6 +43,9 @@ export default function PreCheckin() {
     }
 
     const formData = new FormData();
+    formData.append("dropoff_firstname", dropoffFirstname);
+    formData.append("dropoff_surname", dropoffSurname);
+    formData.append("dropoff_phone", dropoffPhone);
     formData.append("license", file);
 
     try {
@@ -45,35 +53,102 @@ export default function PreCheckin() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert("✅ Pre-check-in completed!");
-      navigate("/employee/view"); // send them back to the booking view
+      alert("✅ Submitted successfully!");
+      navigate("/employee/view");
     } catch (err) {
       console.error(err);
       setError("Failed to complete pre-check-in. Try again.");
     }
   };
 
-  if (loading) return <p>Loading booking...</p>;
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
+  if (loading) return <p style={{ textAlign: "center" }}>Loading booking...</p>;
+  if (error) return <p style={{ color: "red", textAlign: "center" }}>{error}</p>;
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Pre-Check-In</h2>
-      <p><strong>Booking:</strong> {booking.booking_name}</p>
-      <p><strong>Name:</strong> {booking.firstname} {booking.surname}</p>
-      <p><strong>Date:</strong> {booking.schedule_date}</p>
-      <p><strong>Time:</strong> {booking.schedule_time}</p>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        background: "#f8f9fa",
+      }}
+    >
+      <div
+        style={{
+          background: "#fff",
+          padding: "30px",
+          borderRadius: "10px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          width: "100%",
+          maxWidth: "500px",
+        }}
+      >
+        <h2 style={{ textAlign: "center" }}>Pre-Check-In</h2>
+        <p style={{ textAlign: "center", marginBottom: "20px" }}>
+          Please fill in the information below for the person dropping off the vehicle
+        </p>
 
-      <form onSubmit={handleSubmit}>
-        <label>Upload Driver’s License:</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setFile(e.target.files[0])}
-        />
-        <br /><br />
-        <button type="submit">Complete Pre-Check-In</button>
-      </form>
+        <p><strong>Booking:</strong> {booking.booking_name}</p>
+        <p><strong>Customer:</strong> {booking.firstname} {booking.surname}</p>
+        <p><strong>Date:</strong> {booking.schedule_date}</p>
+        <p><strong>Time:</strong> {booking.schedule_time}</p>
+
+        <form onSubmit={handleSubmit} style={{ marginTop: "20px" }}>
+          <label>First Name:</label>
+          <input
+            type="text"
+            value={dropoffFirstname}
+            onChange={(e) => setDropoffFirstname(e.target.value)}
+            required
+            style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+          />
+
+          <label>Last Name:</label>
+          <input
+            type="text"
+            value={dropoffSurname}
+            onChange={(e) => setDropoffSurname(e.target.value)}
+            required
+            style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+          />
+
+          <label>Cell Phone:</label>
+          <input
+            type="text"
+            value={dropoffPhone}
+            onChange={(e) => setDropoffPhone(e.target.value)}
+            placeholder="e.g. 276XXXXXXXX"
+            required
+            style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+          />
+
+          <label>Upload Driver’s License:</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files[0])}
+            required
+            style={{ display: "block", marginBottom: "20px" }}
+          />
+
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              padding: "10px",
+              background: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+              fontSize: "16px",
+            }}
+          >
+            Submit
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

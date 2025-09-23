@@ -1,9 +1,10 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import multer from "multer"; // ✅ for handling file uploads
+import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import axios from "axios";
+import path from "path";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -18,24 +19,22 @@ const CLICKATELL_URL = "https://platform.clickatell.com/messages/http/send";
 // ✅ Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL, // ⚠️ no trailing slash in Render env var
+    origin: process.env.FRONTEND_URL,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(bodyParser.json());
 
-// ✅ File upload handler
-const upload = multer({ storage: multer.memoryStorage() });
-
-// ---------------- ROUTES ---------------- //
+// ✅ Multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // ✅ Create booking
 app.post("/bookings", async (req, res) => {
   try {
     const { booking_name, firstname, surname, schedule_date, schedule_time, cellphone } = req.body;
 
-    // 1️⃣ Insert booking into Supabase
     const { data, error } = await supabase
       .from("bookings")
       .insert([
@@ -44,13 +43,10 @@ app.post("/bookings", async (req, res) => {
       .select();
 
     if (error) throw error;
-
     const booking = data[0];
 
-    // 2️⃣ Generate pre-check-in link
     const preCheckinLink = `${process.env.FRONTEND_URL}/precheckin/${booking.id}`;
 
-    // 3️⃣ Send SMS via Clickatell
     try {
       const smsResponse = await axios.get(CLICKATELL_URL, {
         params: {
@@ -81,7 +77,7 @@ app.post("/bookings", async (req, res) => {
   }
 });
 
-// ✅ Get all bookings (for employee view)
+// ✅ Get all bookings
 app.get("/bookings", async (req, res) => {
   try {
     const { status } = req.query;
@@ -101,52 +97,62 @@ app.get("/bookings", async (req, res) => {
   }
 });
 
-// ✅ Get single booking by ID (for PreCheckIn page)
+// ✅ Get booking by ID
 app.get("/bookings/:id", async (req, res) => {
   try {
     const { id } = req.params;
+
     const { data, error } = await supabase.from("bookings").select("*").eq("id", id).single();
-    if (error) throw error;
+    if (error || !data) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
 
     res.json(data);
   } catch (err) {
     console.error("❌ Error fetching booking:", err);
-    res.status(404).json({ error: "Booking not found" });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Update booking with license upload + mark prechecked
+// ✅ Pre-check-in update
 app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) => {
   try {
     const { id } = req.params;
+    const { dropoff_firstname, dropoff_surname, dropoff_phone } = req.body;
+    let licenseUrl = null;
 
-    // file uploaded?
-    if (!req.file) {
-      return res.status(400).json({ error: "License image is required" });
+    if (req.file) {
+      const fileName = `${id}_${Date.now()}${path.extname(req.file.originalname)}`;
+      const { error: uploadError } = await supabase.storage
+        .from("licenses")
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage.from("licenses").getPublicUrl(fileName);
+      licenseUrl = publicUrlData.publicUrl;
     }
 
-    // upload to Supabase storage
-    const filePath = `licenses/${id}-${Date.now()}.jpg`;
-    const { error: uploadError } = await supabase.storage
-      .from("licenses")
-      .upload(filePath, req.file.buffer, { contentType: req.file.mimetype });
-
-    if (uploadError) throw uploadError;
-
-    const { data: publicUrlData } = supabase.storage.from("licenses").getPublicUrl(filePath);
-    const licenseUrl = publicUrlData.publicUrl;
-
-    // update booking
-    const { error: updateError } = await supabase
+    const { data, error } = await supabase
       .from("bookings")
-      .update({ status: "prechecked", license_url: licenseUrl })
-      .eq("id", id);
+      .update({
+        dropoff_firstname,
+        dropoff_surname,
+        dropoff_phone,
+        license_url: licenseUrl,
+        status: "prechecked",
+      })
+      .eq("id", id)
+      .select();
 
-    if (updateError) throw updateError;
+    if (error) throw error;
 
-    res.json({ success: true, license_url: licenseUrl });
+    res.json({ success: true, booking: data[0] });
   } catch (err) {
-    console.error("❌ Error in precheckin:", err);
+    console.error("❌ Error during pre-check-in:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -156,7 +162,6 @@ app.get("/", (req, res) => {
   res.send("Backend is running ✅");
 });
 
-// ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`);
 });

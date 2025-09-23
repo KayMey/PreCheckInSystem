@@ -1,108 +1,115 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { API_URL } from "../api";
 
 export default function ViewBookings() {
-  const [rows, setRows] = useState([]);
-  const [tab, setTab] = useState("not-prechecked"); // or "prechecked"
+  const [pendingBookings, setPendingBookings] = useState([]);
+  const [checkedBookings, setCheckedBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
+  // 🔹 Fetch bookings
   useEffect(() => {
-    setLoading(true);
+    const fetchBookings = async () => {
+      try {
+        const resPending = await axios.get(`${BACKEND_URL}/bookings?status=not-prechecked`);
+        const resChecked = await axios.get(`${BACKEND_URL}/bookings?status=prechecked`);
 
-    const url = `${API_URL}/bookings`;
-    console.log("📡 Fetching bookings from:", url, "with status =", tab);
+        setPendingBookings(resPending.data);
+        setCheckedBookings(resChecked.data);
+      } catch (err) {
+        console.error("Error fetching bookings:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    axios
-      .get(url, { params: { status: tab } })
-      .then((res) => {
-        console.log("✅ Response data:", res.data);
-        const data = res.data;
-        if (Array.isArray(data)) {
-          setRows(data);
-        } else if (Array.isArray(data?.bookings)) {
-          setRows(data.bookings);
-        } else {
-          setRows([]);
-        }
-      })
-      .catch((err) => {
-        console.error("❌ Error fetching bookings:", err);
-        alert(err.response?.data?.error || err.message);
-        setRows([]);
-      })
-      .finally(() => setLoading(false));
-  }, [tab]);
+    fetchBookings();
+  }, []);
+
+  if (loading) return <p style={{ textAlign: "center" }}>Loading bookings...</p>;
 
   return (
-    <div style={{ maxWidth: 980, margin: "24px auto", fontFamily: "sans-serif" }}>
+    <div style={{ padding: "20px" }}>
       <h2>Bookings</h2>
 
-      <div style={{ marginBottom: 12 }}>
-        <button
-          onClick={() => setTab("not-prechecked")}
-          style={{ marginRight: 8, padding: "6px 10px", background: tab === "not-prechecked" ? "#eee" : "" }}
-        >
-          Still to pre-check-in
-        </button>
-        <button
-          onClick={() => setTab("prechecked")}
-          style={{ padding: "6px 10px", background: tab === "prechecked" ? "#eee" : "" }}
-        >
-          Already pre-checked-in
-        </button>
-      </div>
-
-      {loading ? (
-        <p>Loading…</p>
-      ) : (
-        <table border="1" cellPadding="8" cellSpacing="0" style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Time</th>
-              <th>Booking</th>
-              <th>Name</th>
-              <th>Cell</th>
-              <th>Status</th>
-              {tab === "prechecked" && <th>License</th>}
+      {/* 🔹 Pending Bookings */}
+      <h3 style={{ marginTop: "20px" }}>🚗 Not Yet Pre-Checked-In</h3>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+        <thead>
+          <tr style={{ background: "#f1f1f1" }}>
+            <th style={{ border: "1px solid #ccc", padding: "8px" }}>Customer</th>
+            <th style={{ border: "1px solid #ccc", padding: "8px" }}>Date</th>
+            <th style={{ border: "1px solid #ccc", padding: "8px" }}>Time</th>
+            <th style={{ border: "1px solid #ccc", padding: "8px" }}>Cellphone</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pendingBookings.map((b) => (
+            <tr key={b.id}>
+              <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                {b.firstname} {b.surname}
+              </td>
+              <td style={{ border: "1px solid #ccc", padding: "8px" }}>{b.schedule_date}</td>
+              <td style={{ border: "1px solid #ccc", padding: "8px" }}>{b.schedule_time}</td>
+              <td style={{ border: "1px solid #ccc", padding: "8px" }}>{b.cellphone}</td>
             </tr>
-          </thead>
-          <tbody>
-            {Array.isArray(rows) && rows.length > 0 ? (
-              rows.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.schedule_date}</td>
-                  <td>{r.schedule_time}</td>
-                  <td>{r.booking_name}</td>
-                  <td>
-                    {r.firstname} {r.surname}
-                  </td>
-                  <td>{r.cellphone}</td>
-                  <td>{r.status}</td>
-                  {tab === "prechecked" && (
-                    <td>
-                      {r.license_url ? (
-                        <a href={r.license_url} target="_blank" rel="noreferrer">
-                          View photo
-                        </a>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  )}
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={tab === "prechecked" ? 7 : 6} style={{ textAlign: "center" }}>
-                  No bookings
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      )}
+          ))}
+          {pendingBookings.length === 0 && (
+            <tr>
+              <td colSpan="4" style={{ textAlign: "center", padding: "10px" }}>
+                🎉 All customers have pre-checked-in!
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      {/* 🔹 Prechecked Bookings */}
+      <h3 style={{ marginTop: "30px" }}>✅ Already Pre-Checked-In</h3>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+        <thead>
+          <tr style={{ background: "#f1f1f1" }}>
+            <th style={{ border: "1px solid #ccc", padding: "8px" }}>Customer</th>
+            <th style={{ border: "1px solid #ccc", padding: "8px" }}>Date</th>
+            <th style={{ border: "1px solid #ccc", padding: "8px" }}>Time</th>
+            <th style={{ border: "1px solid #ccc", padding: "8px" }}>Drop-off Name</th>
+            <th style={{ border: "1px solid #ccc", padding: "8px" }}>Drop-off Phone</th>
+            <th style={{ border: "1px solid #ccc", padding: "8px" }}>Driver’s License</th>
+          </tr>
+        </thead>
+        <tbody>
+          {checkedBookings.map((b) => (
+            <tr key={b.id}>
+              <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                {b.firstname} {b.surname}
+              </td>
+              <td style={{ border: "1px solid #ccc", padding: "8px" }}>{b.schedule_date}</td>
+              <td style={{ border: "1px solid #ccc", padding: "8px" }}>{b.schedule_time}</td>
+              <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                {b.dropoff_firstname} {b.dropoff_surname}
+              </td>
+              <td style={{ border: "1px solid #ccc", padding: "8px" }}>{b.dropoff_phone}</td>
+              <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                {b.license_url ? (
+                  <a href={b.license_url} target="_blank" rel="noopener noreferrer">
+                    View License
+                  </a>
+                ) : (
+                  "Not uploaded"
+                )}
+              </td>
+            </tr>
+          ))}
+          {checkedBookings.length === 0 && (
+            <tr>
+              <td colSpan="6" style={{ textAlign: "center", padding: "10px" }}>
+                ❌ No pre-checked-in customers yet
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
