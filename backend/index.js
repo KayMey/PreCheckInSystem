@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
+import multer from "multer"; // ✅ for handling file uploads
 import { createClient } from "@supabase/supabase-js";
 import axios from "axios";
 
@@ -23,6 +24,11 @@ app.use(
   })
 );
 app.use(bodyParser.json());
+
+// ✅ File upload handler
+const upload = multer({ storage: multer.memoryStorage() });
+
+// ---------------- ROUTES ---------------- //
 
 // ✅ Create booking
 app.post("/bookings", async (req, res) => {
@@ -52,13 +58,12 @@ app.post("/bookings", async (req, res) => {
           to: cellphone,
           content: `Hello ${firstname}, complete your pre-check-in here: ${preCheckinLink}`,
         },
-        validateStatus: () => true, // log even errors
+        validateStatus: () => true,
       });
 
       console.log("📩 Clickatell response:", smsResponse.status, smsResponse.data);
 
       if (smsResponse.status !== 202) {
-        // Pass the actual Clickatell error back so you can see it in the frontend
         return res.status(500).json({
           error: "SMS sending failed",
           clickatellResponse: smsResponse.data,
@@ -76,7 +81,7 @@ app.post("/bookings", async (req, res) => {
   }
 });
 
-// ✅ Get bookings (needed for frontend table)
+// ✅ Get all bookings (for employee view)
 app.get("/bookings", async (req, res) => {
   try {
     const { status } = req.query;
@@ -92,6 +97,56 @@ app.get("/bookings", async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error("❌ Error fetching bookings:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Get single booking by ID (for PreCheckin page)
+app.get("/bookings/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase.from("bookings").select("*").eq("id", id).single();
+    if (error) throw error;
+
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error fetching booking:", err);
+    res.status(404).json({ error: "Booking not found" });
+  }
+});
+
+// ✅ Update booking with license upload + mark prechecked
+app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // file uploaded?
+    if (!req.file) {
+      return res.status(400).json({ error: "License image is required" });
+    }
+
+    // upload to Supabase storage
+    const filePath = `licenses/${id}-${Date.now()}.jpg`;
+    const { error: uploadError } = await supabase.storage
+      .from("licenses")
+      .upload(filePath, req.file.buffer, { contentType: req.file.mimetype });
+
+    if (uploadError) throw uploadError;
+
+    const { data: publicUrlData } = supabase.storage.from("licenses").getPublicUrl(filePath);
+    const licenseUrl = publicUrlData.publicUrl;
+
+    // update booking
+    const { error: updateError } = await supabase
+      .from("bookings")
+      .update({ status: "prechecked", license_url: licenseUrl })
+      .eq("id", id);
+
+    if (updateError) throw updateError;
+
+    res.json({ success: true, license_url: licenseUrl });
+  } catch (err) {
+    console.error("❌ Error in precheckin:", err);
     res.status(500).json({ error: err.message });
   }
 });

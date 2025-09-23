@@ -1,99 +1,79 @@
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-function PreCheckIn() {
-  const { token } = useParams();
+export default function PreCheckin() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [booking, setBooking] = useState(null);
-  const [form, setForm] = useState({
-    dropoff_firstname: "",
-    dropoff_surname: "",
-    dropoff_phone: "",
-    license_front: null,
-  });
+  const [file, setFile] = useState(null);
 
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL; // e.g. https://precheckinsystem.onrender.com
+
+  // 🔹 Fetch booking details
   useEffect(() => {
-    async function verifyToken() {
+    const fetchBooking = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/precheckin/verify/${token}`);
-        setBooking(res.data.booking);
+        const res = await axios.get(`${BACKEND_URL}/bookings/${id}`);
+        setBooking(res.data);
       } catch (err) {
-        setError(err.response?.data?.error || "Invalid link");
+        setError("Invalid or expired link.");
       } finally {
         setLoading(false);
       }
-    }
-    verifyToken();
-  }, [token]);
+    };
+    fetchBooking();
+  }, [id]);
 
+  // 🔹 Handle file upload + confirmation
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const fd = new FormData();
-    fd.append("token", token);
-    fd.append("dropoff_firstname", form.dropoff_firstname);
-    fd.append("dropoff_surname", form.dropoff_surname);
-    fd.append("dropoff_phone", form.dropoff_phone);
-    if (form.license_front) fd.append("license_front", form.license_front);
+
+    if (!file) {
+      setError("Please upload a driver’s license image.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("license", file);
 
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/precheckin`, fd, {
+      await axios.put(`${BACKEND_URL}/bookings/${id}/precheckin`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      alert("Pre-check-in submitted successfully!");
+
+      alert("✅ Pre-check-in completed!");
+      navigate("/employee/view"); // send them back to the booking view
     } catch (err) {
-      alert("Error: " + (err.response?.data?.error || err.message));
+      console.error(err);
+      setError("Failed to complete pre-check-in. Try again.");
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <p>Loading booking...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;
 
   return (
     <div style={{ padding: "20px" }}>
-      <h2>Pre-Check-In for {booking.firstname} {booking.surname}</h2>
+      <h2>Pre-Check-In</h2>
+      <p><strong>Booking:</strong> {booking.booking_name}</p>
+      <p><strong>Name:</strong> {booking.firstname} {booking.surname}</p>
+      <p><strong>Date:</strong> {booking.schedule_date}</p>
+      <p><strong>Time:</strong> {booking.schedule_time}</p>
+
       <form onSubmit={handleSubmit}>
-        <div>
-          <label>Drop-off First Name</label>
-          <input
-            type="text"
-            value={form.dropoff_firstname}
-            onChange={(e) => setForm({ ...form, dropoff_firstname: e.target.value })}
-            required
-          />
-        </div>
-        <div>
-          <label>Drop-off Surname</label>
-          <input
-            type="text"
-            value={form.dropoff_surname}
-            onChange={(e) => setForm({ ...form, dropoff_surname: e.target.value })}
-            required
-          />
-        </div>
-        <div>
-          <label>Drop-off Phone</label>
-          <input
-            type="text"
-            value={form.dropoff_phone}
-            onChange={(e) => setForm({ ...form, dropoff_phone: e.target.value })}
-            required
-          />
-        </div>
-        <div>
-          <label>Upload Driver’s License (front)</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setForm({ ...form, license_front: e.target.files[0] })}
-            required
-          />
-        </div>
-        <button type="submit">Submit Pre-Check-In</button>
+        <label>Upload Driver’s License:</label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setFile(e.target.files[0])}
+        />
+        <br /><br />
+        <button type="submit">Complete Pre-Check-In</button>
       </form>
     </div>
   );
 }
-
-export default PreCheckIn;
