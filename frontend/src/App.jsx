@@ -1,17 +1,17 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import EmployeeHome from "./pages/EmployeeHome";
+import Home from "./pages/Home";
 import CreateBooking from "./pages/CreateBooking";
 import ViewBookings from "./pages/ViewBookings";
-import PreCheckIn from "./pages/PreCheckIn";   // <-- add this
+import PreCheckIn from "./pages/PreCheckIn";
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/employee" element={<EmployeeHome />} />
+        <Route path="/employee" element={<Home />} />
         <Route path="/employee/create" element={<CreateBooking />} />
         <Route path="/employee/view" element={<ViewBookings />} />
-        <Route path="/precheckin/:token" element={<PreCheckIn />} /> {/* <-- new */}
+        <Route path="/precheckin/:token" element={<PreCheckIn />} />
       </Routes>
     </Router>
   );
