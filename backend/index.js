@@ -101,7 +101,7 @@ app.get("/bookings", async (req, res) => {
   }
 });
 
-// ✅ Get single booking by ID (for PreCheckin page)
+// ✅ Get single booking by ID (for PreCheckIn page)
 app.get("/bookings/:id", async (req, res) => {
   try {
     const { id } = req.params;

@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Home from "./pages/Home";
 import CreateBooking from "./pages/CreateBooking";
 import ViewBookings from "./pages/ViewBookings";
-import PreCheckin from "./pages/PreCheckin"; // ✅ match filename
+import PreCheckIn from "./pages/PreCheckIn"; // ✅ match filename
 
 function App() {
   return (
@@ -12,7 +12,7 @@ function App() {
         <Route path="/employee" element={<Home />} />
         <Route path="/employee/create" element={<CreateBooking />} />
         <Route path="/employee/view" element={<ViewBookings />} />
-        {/* ✅ Make sure param matches PreCheckin.jsx useParams() */}
+        {/* ✅ Make sure param matches PreCheckIn.jsx useParams() */}
         <Route path="/precheckin/:id" element={<PreCheckIn />} />
       </Routes>
     </Router>
