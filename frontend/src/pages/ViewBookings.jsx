@@ -4,27 +4,39 @@ import axios from "axios";
 export default function ViewBookings() {
   const [pendingBookings, setPendingBookings] = useState([]);
   const [checkedBookings, setCheckedBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("pending");
+  const [loading, setLoading] = useState(true);
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-  // 🔹 Fetch bookings on mount
   useEffect(() => {
     const fetchBookings = async () => {
       try {
+        // Pending bookings
         const resPending = await axios.get(
           `${BACKEND_URL}/bookings?status=not-prechecked`
         );
+        console.log("Pending bookings raw:", resPending.data);
+
+        if (Array.isArray(resPending.data)) {
+          setPendingBookings(resPending.data);
+        } else {
+          console.error("Expected array for pending bookings, got:", resPending.data);
+          setPendingBookings([]);
+        }
+
+        // Prechecked bookings
         const resChecked = await axios.get(
           `${BACKEND_URL}/bookings?status=prechecked`
         );
+        console.log("Prechecked bookings raw:", resChecked.data);
 
-        console.log("Pending bookings:", resPending.data);
-        console.log("Checked bookings:", resChecked.data);
-
-        setPendingBookings(resPending.data || []);
-        setCheckedBookings(resChecked.data || []);
+        if (Array.isArray(resChecked.data)) {
+          setCheckedBookings(resChecked.data);
+        } else {
+          console.error("Expected array for checked bookings, got:", resChecked.data);
+          setCheckedBookings([]);
+        }
       } catch (err) {
         console.error("Error fetching bookings:", err);
       } finally {
@@ -35,33 +47,23 @@ export default function ViewBookings() {
     fetchBookings();
   }, []);
 
-  if (loading) {
-    return <p style={{ textAlign: "center" }}>Loading bookings...</p>;
-  }
+  if (loading) return <p style={{ textAlign: "center" }}>Loading bookings...</p>;
 
   return (
-    <div
-      style={{
-        padding: "20px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <h2 style={{ marginBottom: "20px" }}>📋 Bookings Overview</h2>
+    <div style={{ padding: "20px", textAlign: "center" }}>
+      <h2>Bookings Overview</h2>
 
-      {/* 🔹 Toggle Buttons */}
+      {/* Tabs */}
       <div style={{ marginBottom: "20px" }}>
         <button
           onClick={() => setActiveTab("pending")}
           style={{
             padding: "10px 20px",
             marginRight: "10px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-            background: activeTab === "pending" ? "#007bff" : "#f1f1f1",
+            background: activeTab === "pending" ? "#007bff" : "#ddd",
             color: activeTab === "pending" ? "white" : "black",
-            cursor: "pointer",
+            border: "none",
+            borderRadius: "5px",
           }}
         >
           Not Yet Pre-Checked-In
@@ -70,22 +72,21 @@ export default function ViewBookings() {
           onClick={() => setActiveTab("checked")}
           style={{
             padding: "10px 20px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-            background: activeTab === "checked" ? "green" : "#f1f1f1",
+            background: activeTab === "checked" ? "#28a745" : "#ddd",
             color: activeTab === "checked" ? "white" : "black",
-            cursor: "pointer",
+            border: "none",
+            borderRadius: "5px",
           }}
         >
           Already Pre-Checked-In
         </button>
       </div>
 
-      {/* 🔹 Pending Bookings Table */}
+      {/* Tables */}
       {activeTab === "pending" && (
         <table
           style={{
-            width: "80%",
+            width: "100%",
             borderCollapse: "collapse",
             marginTop: "10px",
           }}
@@ -103,27 +104,26 @@ export default function ViewBookings() {
             </tr>
           </thead>
           <tbody>
-            {pendingBookings.length > 0 ? (
-              pendingBookings.map((b) => (
-                <tr key={b.id}>
-                  <td style={{ border: "1px solid #ccc", padding: "8px" }}>
-                    {b.firstname} {b.surname}
-                  </td>
-                  <td style={{ border: "1px solid #ccc", padding: "8px" }}>
-                    {b.schedule_date}
-                  </td>
-                  <td style={{ border: "1px solid #ccc", padding: "8px" }}>
-                    {b.schedule_time}
-                  </td>
-                  <td style={{ border: "1px solid #ccc", padding: "8px" }}>
-                    {b.cellphone}
-                  </td>
-                </tr>
-              ))
-            ) : (
+            {pendingBookings.map((b) => (
+              <tr key={b.id}>
+                <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                  {b.firstname} {b.surname}
+                </td>
+                <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                  {b.schedule_date}
+                </td>
+                <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                  {b.schedule_time}
+                </td>
+                <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                  {b.cellphone}
+                </td>
+              </tr>
+            ))}
+            {pendingBookings.length === 0 && (
               <tr>
                 <td colSpan="4" style={{ textAlign: "center", padding: "10px" }}>
-                  All customers have pre-checked-in!
+                  All customers have pre-checked-in
                 </td>
               </tr>
             )}
@@ -131,11 +131,10 @@ export default function ViewBookings() {
         </table>
       )}
 
-      {/* Checked Bookings Table */}
       {activeTab === "checked" && (
         <table
           style={{
-            width: "80%",
+            width: "100%",
             borderCollapse: "collapse",
             marginTop: "10px",
           }}
@@ -159,40 +158,39 @@ export default function ViewBookings() {
             </tr>
           </thead>
           <tbody>
-            {checkedBookings.length > 0 ? (
-              checkedBookings.map((b) => (
-                <tr key={b.id}>
-                  <td style={{ border: "1px solid #ccc", padding: "8px" }}>
-                    {b.firstname} {b.surname}
-                  </td>
-                  <td style={{ border: "1px solid #ccc", padding: "8px" }}>
-                    {b.schedule_date}
-                  </td>
-                  <td style={{ border: "1px solid #ccc", padding: "8px" }}>
-                    {b.schedule_time}
-                  </td>
-                  <td style={{ border: "1px solid #ccc", padding: "8px" }}>
-                    {b.dropoff_firstname} {b.dropoff_surname}
-                  </td>
-                  <td style={{ border: "1px solid #ccc", padding: "8px" }}>
-                    {b.dropoff_phone}
-                  </td>
-                  <td style={{ border: "1px solid #ccc", padding: "8px" }}>
-                    {b.license_url ? (
-                      <a
-                        href={b.license_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        View License
-                      </a>
-                    ) : (
-                      "Not uploaded"
-                    )}
-                  </td>
-                </tr>
-              ))
-            ) : (
+            {checkedBookings.map((b) => (
+              <tr key={b.id}>
+                <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                  {b.firstname} {b.surname}
+                </td>
+                <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                  {b.schedule_date}
+                </td>
+                <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                  {b.schedule_time}
+                </td>
+                <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                  {b.dropoff_firstname} {b.dropoff_surname}
+                </td>
+                <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                  {b.dropoff_phone}
+                </td>
+                <td style={{ border: "1px solid #ccc", padding: "8px" }}>
+                  {b.license_url ? (
+                    <a
+                      href={b.license_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View License
+                    </a>
+                  ) : (
+                    "Not uploaded"
+                  )}
+                </td>
+              </tr>
+            ))}
+            {checkedBookings.length === 0 && (
               <tr>
                 <td colSpan="6" style={{ textAlign: "center", padding: "10px" }}>
                   No pre-checked-in customers yet

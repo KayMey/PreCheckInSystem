@@ -9,14 +9,14 @@ import path from "path";
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// ✅ Supabase setup
+// Supabase setup
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// ✅ Clickatell setup
+// Clickatell setup
 const CLICKATELL_API_KEY = (process.env.CLICKATELL_API_KEY || "").trim();
 const CLICKATELL_URL = "https://platform.clickatell.com/messages/http/send";
 
-// ✅ Middleware
+// Middleware
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
@@ -26,11 +26,11 @@ app.use(
 );
 app.use(bodyParser.json());
 
-// ✅ Multer for file uploads
+// Multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// ✅ Create booking
+// Create booking
 app.post("/bookings", async (req, res) => {
   try {
     const { booking_name, firstname, surname, schedule_date, schedule_time, cellphone } = req.body;
@@ -57,7 +57,7 @@ app.post("/bookings", async (req, res) => {
         validateStatus: () => true,
       });
 
-      console.log("📩 Clickatell response:", smsResponse.status, smsResponse.data);
+      console.log("Clickatell response:", smsResponse.status, smsResponse.data);
 
       if (smsResponse.status !== 202) {
         return res.status(500).json({
@@ -66,18 +66,18 @@ app.post("/bookings", async (req, res) => {
         });
       }
     } catch (smsErr) {
-      console.error("❌ Failed to send SMS:", smsErr.message);
+      console.error("Failed to send SMS:", smsErr.message);
       return res.status(500).json({ error: "Clickatell request failed" });
     }
 
     res.status(201).json({ booking });
   } catch (err) {
-    console.error("❌ Error creating booking:", err);
+    console.error("Error creating booking:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Get all bookings
+// Get all bookings
 app.get("/bookings", async (req, res) => {
   try {
     const { status } = req.query;
@@ -88,16 +88,21 @@ app.get("/bookings", async (req, res) => {
     }
 
     const { data, error } = await query;
+
+    console.log("Incoming status filter:", status);
+    console.log("Supabase returned data:", data);
+    console.log("Supabase error (if any):", error);
+
     if (error) throw error;
 
     res.json(data);
   } catch (err) {
-    console.error("❌ Error fetching bookings:", err);
+    console.error("Error fetching bookings:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Get booking by ID
+// Get booking by ID
 app.get("/bookings/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -109,12 +114,12 @@ app.get("/bookings/:id", async (req, res) => {
 
     res.json(data);
   } catch (err) {
-    console.error("❌ Error fetching booking:", err);
+    console.error("Error fetching booking:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Pre-check-in update
+// Pre-check-in update
 app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) => {
   try {
     const { id } = req.params;
@@ -152,16 +157,16 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
 
     res.json({ success: true, booking: data[0] });
   } catch (err) {
-    console.error("❌ Error during pre-check-in:", err);
+    console.error("Error during pre-check-in:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Health check
+// Health check
 app.get("/", (req, res) => {
-  res.send("Backend is running ✅");
+  res.send("Backend is running");
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Backend running on http://localhost:${PORT}`);
+  console.log(`Backend running on http://localhost:${PORT}`);
 });
