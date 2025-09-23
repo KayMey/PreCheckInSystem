@@ -9,10 +9,14 @@ export default function ViewBookings() {
 
   useEffect(() => {
     setLoading(true);
+
+    const url = `${API_URL}/bookings`;
+    console.log("📡 Fetching bookings from:", url, "with status =", tab);
+
     axios
-      .get(`${API_URL}/bookings`, { params: { status: tab } })
+      .get(url, { params: { status: tab } })
       .then((res) => {
-        // Ensure rows is always an array
+        console.log("✅ Response data:", res.data);
         const data = res.data;
         if (Array.isArray(data)) {
           setRows(data);
@@ -23,6 +27,7 @@ export default function ViewBookings() {
         }
       })
       .catch((err) => {
+        console.error("❌ Error fetching bookings:", err);
         alert(err.response?.data?.error || err.message);
         setRows([]);
       })
