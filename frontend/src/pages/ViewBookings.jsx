@@ -11,8 +11,21 @@ export default function ViewBookings() {
     setLoading(true);
     axios
       .get(`${API_URL}/bookings`, { params: { status: tab } })
-      .then((res) => setRows(res.data || []))
-      .catch((err) => alert(err.response?.data?.error || err.message))
+      .then((res) => {
+        // Ensure rows is always an array
+        const data = res.data;
+        if (Array.isArray(data)) {
+          setRows(data);
+        } else if (Array.isArray(data?.bookings)) {
+          setRows(data.bookings);
+        } else {
+          setRows([]);
+        }
+      })
+      .catch((err) => {
+        alert(err.response?.data?.error || err.message);
+        setRows([]);
+      })
       .finally(() => setLoading(false));
   }, [tab]);
 
@@ -51,22 +64,31 @@ export default function ViewBookings() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td>{r.schedule_date}</td>
-                <td>{r.schedule_time}</td>
-                <td>{r.booking_name}</td>
-                <td>
-                  {r.firstname} {r.surname}
-                </td>
-                <td>{r.cellphone}</td>
-                <td>{r.status}</td>
-                {tab === "prechecked" && (
-                  <td>{r.license_url ? <a href={r.license_url} target="_blank" rel="noreferrer">View photo</a> : "-"}</td>
-                )}
-              </tr>
-            ))}
-            {rows.length === 0 && (
+            {Array.isArray(rows) && rows.length > 0 ? (
+              rows.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.schedule_date}</td>
+                  <td>{r.schedule_time}</td>
+                  <td>{r.booking_name}</td>
+                  <td>
+                    {r.firstname} {r.surname}
+                  </td>
+                  <td>{r.cellphone}</td>
+                  <td>{r.status}</td>
+                  {tab === "prechecked" && (
+                    <td>
+                      {r.license_url ? (
+                        <a href={r.license_url} target="_blank" rel="noreferrer">
+                          View photo
+                        </a>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))
+            ) : (
               <tr>
                 <td colSpan={tab === "prechecked" ? 7 : 6} style={{ textAlign: "center" }}>
                   No bookings
