@@ -76,14 +76,22 @@ app.post("/bookings", async (req, res) => {
 
     const smsMessage = `Booking confirmed ${firstname} ${surname} for ${schedule_date} at ${schedule_time}. Please complete pre-check-in: ${link}`;
 
-    // Clickatell HTTP API (GET)
-    await axios.get("https://platform.clickatell.com/messages/http/send", {
-      params: {
-        apiKey: process.env.CLICKATELL_API_KEY,
-        to: cellphone,          // e.g. 27XXXXXXXXX
-        content: smsMessage,    // Clickatell encodes it
-      },
-    });
+    // ── Send SMS via Clickatell ───────────────────────────────
+    try {
+      const smsResponse = await axios.get(
+        "https://platform.clickatell.com/messages/http/send",
+        {
+          params: {
+            apiKey: process.env.CLICKATELL_API_KEY, // Clickatell API key
+            to: cellphone,                          // e.g. 27XXXXXXXXX
+            content: smsMessage,                    // message body
+          },
+        }
+      );
+      console.log("SMS sent successfully:", smsResponse.data);
+    } catch (smsErr) {
+      console.error("Error sending SMS via Clickatell:", smsErr.response?.data || smsErr.message);
+    }
 
     res.json({ success: true, booking: data, link });
   } catch (err) {
