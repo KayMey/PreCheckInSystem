@@ -17,7 +17,7 @@ const CLICKATELL_URL = "https://platform.clickatell.com/messages/http/send";
 // ✅ Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL, // make sure no trailing slash in Render env var
+    origin: process.env.FRONTEND_URL, // ⚠️ no trailing slash in Render env var
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -55,13 +55,18 @@ app.post("/bookings", async (req, res) => {
         validateStatus: () => true, // log even errors
       });
 
-      console.log("📩 Clickatell response:", smsResponse.data);
+      console.log("📩 Clickatell response:", smsResponse.status, smsResponse.data);
 
       if (smsResponse.status !== 202) {
-        console.error("❌ Clickatell error:", smsResponse.data);
+        // Pass the actual Clickatell error back so you can see it in the frontend
+        return res.status(500).json({
+          error: "SMS sending failed",
+          clickatellResponse: smsResponse.data,
+        });
       }
     } catch (smsErr) {
       console.error("❌ Failed to send SMS:", smsErr.message);
+      return res.status(500).json({ error: "Clickatell request failed" });
     }
 
     res.status(201).json({ booking });
