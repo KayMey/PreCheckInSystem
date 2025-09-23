@@ -78,16 +78,13 @@ app.post("/bookings", async (req, res) => {
 
     // ── Send SMS via Clickatell ───────────────────────────────
     try {
-      const smsResponse = await axios.get(
-        "https://platform.clickatell.com/messages/http/send",
-        {
-          params: {
-            apiKey: process.env.CLICKATELL_API_KEY, // Clickatell API key
-            to: cellphone,                          // e.g. 27XXXXXXXXX
-            content: smsMessage,                    // message body
-          },
-        }
-      );
+      const smsResponse = await axios.get("https://platform.clickatell.com/messages/http/send", {
+        params: {
+          apiKey: process.env.CLICKATELL_API_KEY,
+          to: cellphone,
+          content: smsMessage,
+        },
+      });
       console.log("SMS sent successfully:", smsResponse.data);
     } catch (smsErr) {
       console.error("Error sending SMS via Clickatell:", smsErr.response?.data || smsErr.message);
@@ -104,16 +101,27 @@ app.post("/bookings", async (req, res) => {
 app.get("/bookings", async (req, res) => {
   try {
     const status = req.query.status;
+
     let q = supabase
       .from("bookings")
       .select("*")
       .order("schedule_date", { ascending: true })
       .order("schedule_time", { ascending: true });
-    if (status) q = q.eq("status", status);
+
+    if (status) {
+      q = q.eq("status", status);
+    }
 
     const { data, error } = await q;
     if (error) throw error;
-    res.json(data || []);
+
+    // fallback: ensure all rows have a status
+    const withStatus = (data || []).map((b) => ({
+      ...b,
+      status: b.status || "not-prechecked",
+    }));
+
+    res.json(withStatus);
   } catch (err) {
     console.error("GET /bookings error:", err);
     res.status(500).json({ success: false, error: err.message || "Server error" });
