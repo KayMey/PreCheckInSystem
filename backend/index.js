@@ -4,58 +4,69 @@ import bodyParser from "body-parser";
 import { createClient } from "@supabase/supabase-js";
 import axios from "axios";
 
+// --- Setup ---
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// ✅ Enable CORS for your Netlify frontend
-app.use(
-  cors({
-    origin: "https://nimble-kangaroo-5dfc99.netlify.app", // your frontend URL
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
-// ✅ Middleware
-app.use(bodyParser.json());
-
-// Supabase setup
+// Supabase
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// Clickatell setup
+// Clickatell
 const CLICKATELL_API_KEY = process.env.CLICKATELL_API_KEY;
 const CLICKATELL_URL = "https://platform.clickatell.com/messages/http/send";
 
-// --------------- ROUTES --------------- //
+// --- Middleware ---
+app.use(
+  cors({
+    origin: "https://nimble-kangaroo-5dfc99.netlify.app", // Netlify frontend
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+app.use(bodyParser.json());
 
-// Create booking
+// --- ROUTES ---
+
+// 1) Health check
+app.get("/", (req, res) => {
+  res.send("✅ Backend is running");
+});
+
+// 2) Get bookings by status
+app.get("/bookings", async (req, res) => {
+  try {
+    const { status } = req.query;
+
+    let query = supabase.from("bookings").select("*").order("schedule_time", { ascending: true });
+    if (status) query = query.eq("status", status);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    res.json(data);
+  } catch (err) {
+    console.error("Error fetching bookings:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3) Create booking + send SMS
 app.post("/bookings", async (req, res) => {
   try {
     const { booking_name, firstname, surname, schedule_date, schedule_time, cellphone } = req.body;
 
-    // 1️⃣ Insert into Supabase
+    // Insert into Supabase
     const { data, error } = await supabase
       .from("bookings")
-      .insert([
-        {
-          booking_name,
-          firstname,
-          surname,
-          schedule_date,
-          schedule_time,
-          cellphone,
-          status: "not-prechecked",
-        },
-      ])
+      .insert([{ booking_name, firstname, surname, schedule_date, schedule_time, cellphone, status: "not-prechecked" }])
       .select();
 
     if (error) throw error;
 
-    // 2️⃣ Generate pre-check-in link
     const booking = data[0];
     const preCheckinLink = `https://nimble-kangaroo-5dfc99.netlify.app/precheckin/${booking.id}`;
 
-    // 3️⃣ Send SMS via Clickatell
+    // Send SMS via Clickatell
     const smsResponse = await axios.get(CLICKATELL_URL, {
       params: {
         apiKey: CLICKATELL_API_KEY,
@@ -64,21 +75,14 @@ app.post("/bookings", async (req, res) => {
       },
     });
 
-    console.log("SMS sent:", smsResponse.data);
-
     res.status(201).json({ booking, sms: smsResponse.data });
   } catch (err) {
     console.error("Error creating booking:", err.response?.data || err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, details: err.response?.data });
   }
 });
 
-// Health check
-app.get("/", (req, res) => {
-  res.send("Backend is running ✅");
-});
-
-// Start server
+// --- Start Server ---
 app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+  console.log(`🚀 Backend running on http://localhost:${PORT}`);
 });
