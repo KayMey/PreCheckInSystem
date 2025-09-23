@@ -17,7 +17,7 @@ const CLICKATELL_URL = "https://platform.clickatell.com/messages/http/send";
 // ✅ Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "*", // allow your Netlify frontend
+    origin: "https://nimble-kangaroo-5dfc99.netlify.app", // no trailing slash
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
