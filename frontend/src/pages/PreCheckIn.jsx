@@ -1,117 +1,99 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-import { API_URL } from "../api";
 
-export default function PreCheckIn() {
+function PreCheckIn() {
   const { token } = useParams();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [info, setInfo] = useState(null);
+  const [error, setError] = useState(null);
+  const [booking, setBooking] = useState(null);
   const [form, setForm] = useState({
     dropoff_firstname: "",
     dropoff_surname: "",
     dropoff_phone: "",
-    file: null,
+    license_front: null,
   });
-  const [status, setStatus] = useState("");
 
   useEffect(() => {
-    axios
-      .get(`${API_URL}/precheckin/verify/${token}`)
-      .then((res) => {
-        setInfo(res.data.booking);
+    async function verifyToken() {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/precheckin/verify/${token}`);
+        setBooking(res.data.booking);
+      } catch (err) {
+        setError(err.response?.data?.error || "Invalid link");
+      } finally {
         setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.response?.data?.error || "Invalid or expired link.");
-        setLoading(false);
-      });
+      }
+    }
+    verifyToken();
   }, [token]);
 
-  const submit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setStatus("Submitting…");
-
     const fd = new FormData();
     fd.append("token", token);
     fd.append("dropoff_firstname", form.dropoff_firstname);
     fd.append("dropoff_surname", form.dropoff_surname);
     fd.append("dropoff_phone", form.dropoff_phone);
-    if (form.file) fd.append("license_front", form.file);
+    if (form.license_front) fd.append("license_front", form.license_front);
 
     try {
-      const res = await axios.post(`${API_URL}/precheckin`, fd, {
+      await axios.post(`${import.meta.env.VITE_API_URL}/precheckin`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      if (res.data?.success) {
-        setStatus("✅ Thanks! Your pre-check-in is submitted.");
-      } else {
-        setStatus("⚠️ Unexpected response.");
-      }
+      alert("Pre-check-in submitted successfully!");
     } catch (err) {
-      setStatus(`❌ Error: ${err.response?.data?.error || err.message}`);
+      alert("Error: " + (err.response?.data?.error || err.message));
     }
   };
 
-  if (loading) return <p style={{ fontFamily: "sans-serif", margin: 24 }}>Loading…</p>;
-  if (error) return <p style={{ fontFamily: "sans-serif", margin: 24 }}>{error}</p>;
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p style={{ color: "red" }}>{error}</p>;
 
   return (
-    <div style={{ maxWidth: 520, margin: "30px auto", fontFamily: "sans-serif" }}>
-      <h2>Pre-check-in</h2>
-      <p>
-        Please fill the information below for the person <b>dropping the vehicle off</b>.
-      </p>
-      <div style={{ background: "#f7f7f7", padding: 12, borderRadius: 8, marginBottom: 12 }}>
+    <div style={{ padding: "20px" }}>
+      <h2>Pre-Check-In for {booking.firstname} {booking.surname}</h2>
+      <form onSubmit={handleSubmit}>
         <div>
-          <b>Booking:</b> {info.firstname} {info.surname}
-        </div>
-        <div>
-          <b>Date:</b> {info.schedule_date} &nbsp; <b>Time:</b> {info.schedule_time}
-        </div>
-      </div>
-
-      <form onSubmit={submit} style={{ display: "grid", gap: 10 }}>
-        <label>
-          First name (drop-off person)
+          <label>Drop-off First Name</label>
           <input
-            required
+            type="text"
             value={form.dropoff_firstname}
-            onChange={(e) => setForm((f) => ({ ...f, dropoff_firstname: e.target.value }))}
-          />
-        </label>
-        <label>
-          Surname (drop-off person)
-          <input
+            onChange={(e) => setForm({ ...form, dropoff_firstname: e.target.value })}
             required
+          />
+        </div>
+        <div>
+          <label>Drop-off Surname</label>
+          <input
+            type="text"
             value={form.dropoff_surname}
-            onChange={(e) => setForm((f) => ({ ...f, dropoff_surname: e.target.value }))}
-          />
-        </label>
-        <label>
-          Cellphone (drop-off person)
-          <input
+            onChange={(e) => setForm({ ...form, dropoff_surname: e.target.value })}
             required
-            value={form.dropoff_phone}
-            onChange={(e) => setForm((f) => ({ ...f, dropoff_phone: e.target.value }))}
           />
-        </label>
-        <label>
-          Upload front side of driver’s license
+        </div>
+        <div>
+          <label>Drop-off Phone</label>
+          <input
+            type="text"
+            value={form.dropoff_phone}
+            onChange={(e) => setForm({ ...form, dropoff_phone: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <label>Upload Driver’s License (front)</label>
           <input
             type="file"
             accept="image/*"
-            onChange={(e) => setForm((f) => ({ ...f, file: e.target.files?.[0] || null }))}
+            onChange={(e) => setForm({ ...form, license_front: e.target.files[0] })}
+            required
           />
-        </label>
-
-        <button type="submit" style={{ padding: "10px 16px" }}>
-          Submit
-        </button>
+        </div>
+        <button type="submit">Submit Pre-Check-In</button>
       </form>
-
-      {status && <p style={{ marginTop: 12 }}>{status}</p>}
     </div>
   );
 }
+
+export default PreCheckIn;
