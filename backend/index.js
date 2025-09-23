@@ -85,7 +85,7 @@ app.post("/bookings", async (req, res) => {
   }
 });
 
-// Get all bookings (with sort by date then time)
+// Get all bookings (always returns array)
 app.get("/bookings", async (req, res) => {
   try {
     const { status } = req.query;
@@ -103,7 +103,9 @@ app.get("/bookings", async (req, res) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    res.json(data);
+    console.log("Fetched bookings:", data); // debug
+
+    res.json(Array.isArray(data) ? data : []); // ensure array
   } catch (err) {
     console.error("Error fetching bookings:", err);
     res.status(500).json({ error: err.message });

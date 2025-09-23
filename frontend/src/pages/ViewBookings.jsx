@@ -19,8 +19,9 @@ export default function ViewBookings() {
         console.log("Pending:", resPending.data);
         console.log("Checked:", resChecked.data);
 
-        setPendingBookings(resPending.data || []);
-        setCheckedBookings(resChecked.data || []);
+        // ✅ Always set arrays
+        setPendingBookings(Array.isArray(resPending.data) ? resPending.data : []);
+        setCheckedBookings(Array.isArray(resChecked.data) ? resChecked.data : []);
       } catch (err) {
         console.error("Error fetching bookings:", err);
       } finally {
@@ -29,7 +30,7 @@ export default function ViewBookings() {
     };
 
     fetchBookings();
-  }, []);
+  }, [BACKEND_URL]);
 
   if (loading) return <p style={{ textAlign: "center" }}>Loading bookings...</p>;
 
