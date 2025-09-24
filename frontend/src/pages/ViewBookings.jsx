@@ -12,7 +12,6 @@ export default function ViewBookings() {
     axios
       .get(`${API_URL}/bookings`, { params: { status: tab } })
       .then((res) => {
-        // Ensure rows is always an array
         const data = res.data;
         if (Array.isArray(data)) {
           setRows(data);
@@ -77,8 +76,8 @@ export default function ViewBookings() {
                   <td>{r.status}</td>
                   {tab === "prechecked" && (
                     <td>
-                      {r.license_url ? (
-                        <a href={r.license_url} target="_blank" rel="noreferrer">
+                      {r.license_photo_url ? (
+                        <a href={r.license_photo_url} target="_blank" rel="noreferrer">
                           View photo
                         </a>
                       ) : (
