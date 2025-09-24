@@ -79,7 +79,7 @@ app.post("/bookings", async (req, res) => {
         params: {
           apiKey: CLICKATELL_API_KEY,
           to: cellphone,
-          content: `Hello ${firstname}, complete your pre-check-in here: ${preCheckinLink}`,
+          content: `Hello ${firstname}, your booking has been confirmed for ${schedule_date} at ${schedule_time}. Please fill in the pre-check-in form: ${precheckinLink}`,
         },
         validateStatus: () => true,
       });
