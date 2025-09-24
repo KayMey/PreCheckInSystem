@@ -5,9 +5,49 @@ export default function PreCheckin() {
   const [verifyState, setVerifyState] = useState("idle"); // idle | checking | ok | fail
   const [verifyMsg, setVerifyMsg] = useState("");
 
-  async function fileToBase64(f) {
-    const buf = await f.arrayBuffer();
-    return btoa(String.fromCharCode(...new Uint8Array(buf)));
+  // ✅ Helper: Resize and compress an image before base64 conversion
+  async function resizeImage(file, maxWidth = 1000, maxHeight = 1000) {
+    return new Promise((resolve, reject) => {
+      const img = document.createElement("img");
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+
+      img.onerror = reject;
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height *= maxWidth / width));
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width *= maxHeight / height));
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Compress to JPEG, quality 0.8
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        // Strip the prefix (data:image/jpeg;base64,)
+        const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+        resolve(base64);
+      };
+
+      reader.readAsDataURL(file);
+    });
   }
 
   const onFileChange = (e) => {
@@ -26,7 +66,9 @@ export default function PreCheckin() {
     setVerifyMsg("Verifying…");
 
     try {
-      const imageBase64 = await fileToBase64(file);
+      // ✅ Resize before sending
+      const imageBase64 = await resizeImage(file);
+
       const res = await fetch("/.netlify/functions/verify-license", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -39,7 +81,6 @@ export default function PreCheckin() {
         setVerifyState("ok");
         setVerifyMsg("✓ Licence verified");
       } else {
-        // Show AWS error if available
         setVerifyState("fail");
         setVerifyMsg(
           "AWS error: " + (data.error || "Could not verify. Please upload a clearer photo.")
@@ -49,7 +90,6 @@ export default function PreCheckin() {
         if (input) input.value = "";
       }
     } catch (e) {
-      // Show the actual error message instead of generic text
       setVerifyState("fail");
       setVerifyMsg("Verification error: " + (e.message || "Unknown error"));
     }
@@ -58,8 +98,8 @@ export default function PreCheckin() {
   const onSubmit = async (e) => {
     e.preventDefault();
     if (verifyState !== "ok") return;
-    // TODO: add your submit logic here (Supabase insert, file upload, etc.)
     alert("Form submitted ✅");
+    // TODO: Your submit-to-Supabase logic here
   };
 
   const canSubmit = verifyState === "ok";
