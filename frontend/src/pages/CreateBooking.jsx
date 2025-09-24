@@ -1,5 +1,3 @@
-// src/pages/CreateBooking.jsx
-
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_URL } from "../api";
@@ -13,53 +11,54 @@ export default function CreateBooking() {
   const [cellphone, setCellphone] = useState("");
   const [availableTimes, setAvailableTimes] = useState([]);
 
-  // All possible slots
-  const allSlots = [
-    "07:00","07:10","07:20","07:30","07:40","07:50",
-    "08:00","08:10","08:20","08:30","08:40","08:50","09:00"
-  ];
+  // generate all slots 07:00 - 09:00 in 10-min steps
+  const allSlots = Array.from({ length: 13 }, (_, i) => {
+    const h = 7 + Math.floor(i / 6);
+    const m = (i % 6) * 10;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  });
 
-  // Fetch existing bookings when date changes
   useEffect(() => {
     if (!scheduleDate) {
       setAvailableTimes([]);
       return;
     }
-
     axios
-      .get(`${API_URL}/bookings`, { params: { date: scheduleDate } })
+      .get(`${API_URL}/bookings`, { params: { status: "" } })
       .then((res) => {
-        const bookedTimes = res.data.map((b) => b.schedule_time);
-        const freeSlots = allSlots.filter((t) => !bookedTimes.includes(t));
-        setAvailableTimes(freeSlots);
+        const bookings = res.data || [];
+        const taken = bookings
+          .filter((b) => b.schedule_date === scheduleDate)
+          .map((b) => b.schedule_time);
+        const free = allSlots.filter((t) => !taken.includes(t));
+        setAvailableTimes(free);
       })
-      .catch((err) => {
-        console.error("Error fetching bookings:", err);
-        setAvailableTimes([]);
-      });
+      .catch(() => setAvailableTimes(allSlots));
   }, [scheduleDate]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    try {
-      await axios.post(`${API_URL}/bookings`, {
+    axios
+      .post(`${API_URL}/bookings`, {
         booking_name: bookingName,
         firstname,
         surname,
         schedule_date: scheduleDate,
         schedule_time: scheduleTime,
         cellphone,
+      })
+      .then(() => {
+        alert("✅ Booking created");
+        setBookingName("");
+        setFirstname("");
+        setSurname("");
+        setScheduleDate("");
+        setScheduleTime("");
+        setCellphone("");
+      })
+      .catch((err) => {
+        alert(err.response?.data?.error || "Error creating booking");
       });
-      alert("Booking created!");
-      setBookingName("");
-      setFirstname("");
-      setSurname("");
-      setScheduleDate("");
-      setScheduleTime("");
-      setCellphone("");
-    } catch (err) {
-      alert(err.response?.data?.error || err.message);
-    }
   };
 
   return (
@@ -67,62 +66,59 @@ export default function CreateBooking() {
       <h2>Create Booking</h2>
       <form onSubmit={handleSubmit}>
         <input
-          type="text"
           placeholder="Booking Name"
           value={bookingName}
           onChange={(e) => setBookingName(e.target.value)}
           required
         />
+        <br />
         <input
-          type="text"
           placeholder="Firstname"
           value={firstname}
           onChange={(e) => setFirstname(e.target.value)}
           required
         />
+        <br />
         <input
-          type="text"
           placeholder="Surname"
           value={surname}
           onChange={(e) => setSurname(e.target.value)}
           required
         />
-
+        <br />
         <input
           type="date"
           value={scheduleDate}
           onChange={(e) => setScheduleDate(e.target.value)}
           required
         />
-
-        {/* Show available slots when date is chosen */}
         {scheduleDate && (
-          <div style={{ margin: "10px 0" }}>
+          <div style={{ marginTop: "8px" }}>
             <strong>Available times:</strong>
             <ul>
               {availableTimes.length > 0 ? (
                 availableTimes.map((t) => <li key={t}>{t}</li>)
               ) : (
-                <li>All slots booked</li>
+                <li>No slots left</li>
               )}
             </ul>
           </div>
         )}
-
+        <br />
         <input
           type="time"
           value={scheduleTime}
           onChange={(e) => setScheduleTime(e.target.value)}
           required
         />
+        <br />
         <input
-          type="text"
           placeholder="Cellphone e.g. 276XXXXXXXX"
           value={cellphone}
           onChange={(e) => setCellphone(e.target.value)}
           required
         />
-
+        <br />
         <button type="submit">Create Booking</button>
       </form>
     </div>
