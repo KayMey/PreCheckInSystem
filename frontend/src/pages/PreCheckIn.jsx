@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import axios from "axios";
 
 export default function PreCheckin() {
   const { id } = useParams();
-  const navigate = useNavigate();
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
 
   // form state
   const [dropoffFirstname, setDropoffFirstname] = useState("");
   const [dropoffSurname, setDropoffSurname] = useState("");
   const [dropoffPhone, setDropoffPhone] = useState("");
+  const [dropoffIdNumber, setDropoffIdNumber] = useState(""); // ✅ new field
   const [file, setFile] = useState(null);
 
-  // ✅ use correct env var
   const BACKEND_URL = import.meta.env.VITE_API_URL;
 
   // Fetch booking details
@@ -47,6 +47,7 @@ export default function PreCheckin() {
     formData.append("dropoff_firstname", dropoffFirstname);
     formData.append("dropoff_surname", dropoffSurname);
     formData.append("dropoff_phone", dropoffPhone);
+    formData.append("dropoff_id_number", dropoffIdNumber); // ✅ include in request
     formData.append("license", file);
 
     try {
@@ -54,8 +55,7 @@ export default function PreCheckin() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert("✅ Submitted successfully!");
-      navigate("/employee/view");
+      setSubmitted(true);
     } catch (err) {
       console.error("Pre-check-in error:", err.response?.data || err.message);
       setError("Failed to complete pre-check-in. Try again.");
@@ -85,78 +85,149 @@ export default function PreCheckin() {
           maxWidth: "500px",
         }}
       >
-        <h2 style={{ textAlign: "center" }}>Pre-Check-In</h2>
-        <p style={{ textAlign: "center", marginBottom: "20px" }}>
-          Please fill in the information below for the person dropping off the vehicle
-        </p>
+        {!submitted ? (
+          <>
+            <h2
+              style={{
+                textAlign: "center",
+                color: "#000",
+                WebkitTextFillColor: "#000",
+              }}
+            >
+              Pre-Check-In
+            </h2>
+            <p
+              style={{
+                textAlign: "center",
+                marginBottom: "20px",
+                color: "#000",
+                WebkitTextFillColor: "#000",
+              }}
+            >
+              Please fill in the information below for the person dropping off the vehicle
+            </p>
 
-        <p><strong>Booking:</strong> {booking.booking_name}</p>
-        <p><strong>Customer:</strong> {booking.firstname} {booking.surname}</p>
-        <p><strong>Date:</strong> {booking.schedule_date}</p>
-        <p><strong>Time:</strong> {booking.schedule_time}</p>
+            <p style={{ color: "#000", WebkitTextFillColor: "#000" }}>
+              <strong>Booking:</strong> {booking.booking_name}
+            </p>
+            <p style={{ color: "#000", WebkitTextFillColor: "#000" }}>
+              <strong>Customer:</strong> {booking.firstname} {booking.surname}
+            </p>
+            <p style={{ color: "#000", WebkitTextFillColor: "#000" }}>
+              <strong>Date:</strong> {booking.schedule_date}
+            </p>
+            <p style={{ color: "#000", WebkitTextFillColor: "#000" }}>
+              <strong>Time:</strong> {booking.schedule_time}
+            </p>
 
-        <form onSubmit={handleSubmit} style={{ marginTop: "20px" }}>
-          <label style={{ display: "block", marginBottom: "5px", color: "#000" }}>
-            First Name:
-          </label>
-          <input
-            type="text"
-            value={dropoffFirstname}
-            onChange={(e) => setDropoffFirstname(e.target.value)}
-            required
-            style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-          />
+            <form onSubmit={handleSubmit} style={{ marginTop: "20px" }}>
+              <label style={{ display: "block", marginBottom: "5px", color: "#000", WebkitTextFillColor: "#000" }}>
+                First Name:
+              </label>
+              <input
+                type="text"
+                value={dropoffFirstname}
+                onChange={(e) => setDropoffFirstname(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  marginBottom: "10px",
+                  color: "#000",
+                  WebkitTextFillColor: "#000",
+                  background: "#fff",
+                }}
+              />
 
-          <label style={{ display: "block", marginBottom: "5px", color: "#000" }}>
-            Last Name:
-          </label>
-          <input
-            type="text"
-            value={dropoffSurname}
-            onChange={(e) => setDropoffSurname(e.target.value)}
-            required
-            style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-          />
+              <label style={{ display: "block", marginBottom: "5px", color: "#000", WebkitTextFillColor: "#000" }}>
+                Last Name:
+              </label>
+              <input
+                type="text"
+                value={dropoffSurname}
+                onChange={(e) => setDropoffSurname(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  marginBottom: "10px",
+                  color: "#000",
+                  WebkitTextFillColor: "#000",
+                  background: "#fff",
+                }}
+              />
 
-          <label style={{ display: "block", marginBottom: "5px", color: "#000" }}>
-            Cell Phone:
-          </label>
-          <input
-            type="text"
-            value={dropoffPhone}
-            onChange={(e) => setDropoffPhone(e.target.value)}
-            placeholder="e.g. 276XXXXXXXX"
-            required
-            style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-          />
+              <label style={{ display: "block", marginBottom: "5px", color: "#000", WebkitTextFillColor: "#000" }}>
+                Cell Phone:
+              </label>
+              <input
+                type="text"
+                value={dropoffPhone}
+                onChange={(e) => setDropoffPhone(e.target.value)}
+                placeholder="e.g. 276XXXXXXXX"
+                required
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  marginBottom: "10px",
+                  color: "#000",
+                  WebkitTextFillColor: "#000",
+                  background: "#fff",
+                }}
+              />
 
-          <label style={{ display: "block", marginBottom: "5px", color: "#000" }}>
-            Upload Driver’s License:
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setFile(e.target.files[0])}
-            required
-            style={{ display: "block", marginBottom: "20px" }}
-          />
+              {/* New ID Number field */}
+              <label style={{ display: "block", marginBottom: "5px", color: "#000", WebkitTextFillColor: "#000" }}>
+                ID Number:
+              </label>
+              <input
+                type="text"
+                value={dropoffIdNumber}
+                onChange={(e) => setDropoffIdNumber(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  marginBottom: "10px",
+                  color: "#000",
+                  WebkitTextFillColor: "#000",
+                  background: "#fff",
+                }}
+              />
 
-          <button
-            type="submit"
-            style={{
-              width: "100%",
-              padding: "10px",
-              background: "#007bff",
-              color: "white",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-              fontSize: "16px",
-            }}
-          >
-            Submit
-          </button>
-        </form>
+              <label style={{ display: "block", marginBottom: "5px", color: "#000", WebkitTextFillColor: "#000" }}>
+                Upload Driver’s License:
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFile(e.target.files[0])}
+                required
+                style={{ display: "block", marginBottom: "20px" }}
+              />
+
+              <button
+                type="submit"
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  background: "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                  fontSize: "16px",
+                }}
+              >
+                Submit
+              </button>
+            </form>
+          </>
+        ) : (
+          <h3 style={{ color: "green", textAlign: "center" }}>
+            Thank you! Your pre-check-in has been submitted.
+          </h3>
+        )}
       </div>
     </div>
   );

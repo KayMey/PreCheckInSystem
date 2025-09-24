@@ -9,29 +9,22 @@ import path from "path";
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// =======================
 // Supabase setup
-// =======================
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// =======================
 // Clickatell setup
-// =======================
 const CLICKATELL_API_KEY = (process.env.CLICKATELL_API_KEY || "").trim();
 const CLICKATELL_URL = "https://platform.clickatell.com/messages/http/send";
 
-// =======================
-// CORS setup
-// =======================
+// ✅ Allowed origins
 const allowedOrigins = [
-  process.env.FRONTEND_URL || "https://nimble-kangaroo-5dfc99.netlify.app",
-  "http://localhost:5173", // local Vite dev
+  "http://localhost:5173", // local dev
+  "https://nimble-kangaroo-5dfc99.netlify.app", // Netlify frontend
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      console.log("CORS request from:", origin); // 🔍 Debug
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -44,20 +37,17 @@ app.use(
   })
 );
 
-// ✅ Allow preflight
-app.options("*", cors());
+app.options("*", cors()); // preflight
 
 app.use(bodyParser.json());
 
-// =======================
-// File upload setup
-// =======================
+// Multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// =======================
-// ROUTES
-// =======================
+/* ========================
+   ROUTES
+======================== */
 
 // Create booking
 app.post("/bookings", async (req, res) => {
@@ -82,7 +72,6 @@ app.post("/bookings", async (req, res) => {
     if (error) throw error;
     const booking = data[0];
 
-    // Pre-checkin link sent via SMS
     const preCheckinLink = `${process.env.FRONTEND_URL}/precheckin/${booking.id}`;
 
     try {
@@ -153,11 +142,11 @@ app.get("/bookings/:id", async (req, res) => {
   }
 });
 
-// Pre-check-in update
+// ✅ Pre-check-in update (now with ID Number)
 app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) => {
   try {
     const { id } = req.params;
-    const { dropoff_firstname, dropoff_surname, dropoff_phone } = req.body;
+    const { dropoff_firstname, dropoff_surname, dropoff_phone, dropoff_id_number } = req.body;
     let licenseUrl = null;
 
     if (req.file) {
@@ -181,6 +170,7 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
         dropoff_firstname,
         dropoff_surname,
         dropoff_phone,
+        dropoff_id_number, // ✅ save ID Number
         license_photo_url: licenseUrl,
         status: "prechecked",
       })
@@ -201,9 +191,6 @@ app.get("/", (req, res) => {
   res.send("Backend is running");
 });
 
-// =======================
-// Start server
-// =======================
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });

@@ -35,13 +35,20 @@ export default function ViewBookings() {
       <div style={{ marginBottom: 12 }}>
         <button
           onClick={() => setTab("not-prechecked")}
-          style={{ marginRight: 8, padding: "6px 10px", background: tab === "not-prechecked" ? "#eee" : "" }}
+          style={{
+            marginRight: 8,
+            padding: "6px 10px",
+            background: tab === "not-prechecked" ? "#eee" : "",
+          }}
         >
           Still to pre-check-in
         </button>
         <button
           onClick={() => setTab("prechecked")}
-          style={{ padding: "6px 10px", background: tab === "prechecked" ? "#eee" : "" }}
+          style={{
+            padding: "6px 10px",
+            background: tab === "prechecked" ? "#eee" : "",
+          }}
         >
           Already pre-checked-in
         </button>
@@ -50,7 +57,12 @@ export default function ViewBookings() {
       {loading ? (
         <p>Loading…</p>
       ) : (
-        <table border="1" cellPadding="8" cellSpacing="0" style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table
+          border="1"
+          cellPadding="8"
+          cellSpacing="0"
+          style={{ width: "100%", borderCollapse: "collapse" }}
+        >
           <thead>
             <tr>
               <th>Date</th>
@@ -59,6 +71,7 @@ export default function ViewBookings() {
               <th>Name</th>
               <th>Cell</th>
               <th>Status</th>
+              {tab === "prechecked" && <th>ID Number</th>}
               {tab === "prechecked" && <th>License</th>}
             </tr>
           </thead>
@@ -74,6 +87,7 @@ export default function ViewBookings() {
                   </td>
                   <td>{r.cellphone}</td>
                   <td>{r.status}</td>
+                  {tab === "prechecked" && <td>{r.dropoff_id_number || "-"}</td>}
                   {tab === "prechecked" && (
                     <td>
                       {r.license_photo_url ? (
@@ -89,7 +103,10 @@ export default function ViewBookings() {
               ))
             ) : (
               <tr>
-                <td colSpan={tab === "prechecked" ? 7 : 6} style={{ textAlign: "center" }}>
+                <td
+                  colSpan={tab === "prechecked" ? 8 : 6}
+                  style={{ textAlign: "center" }}
+                >
                   No bookings
                 </td>
               </tr>
