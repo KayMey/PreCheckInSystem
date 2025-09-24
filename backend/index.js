@@ -16,19 +16,38 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 const CLICKATELL_API_KEY = (process.env.CLICKATELL_API_KEY || "").trim();
 const CLICKATELL_URL = "https://platform.clickatell.com/messages/http/send";
 
-// Middleware
+// ✅ Improved CORS setup
+const allowedOrigins = [
+  "http://localhost:5173", // Vite local dev
+  "https://nimble-kangaroo-5dfc99.netlify.app", // Netlify frontend
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
+
+app.options("*", cors()); // ✅ Allow preflight for all routes
+
 app.use(bodyParser.json());
 
 // Multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
+
+/* ========================
+   ROUTES
+======================== */
 
 // Create booking
 app.post("/bookings", async (req, res) => {
@@ -85,7 +104,7 @@ app.post("/bookings", async (req, res) => {
   }
 });
 
-// Get all bookings (always returns array)
+// Get all bookings
 app.get("/bookings", async (req, res) => {
   try {
     const { status } = req.query;
@@ -96,16 +115,12 @@ app.get("/bookings", async (req, res) => {
       .order("schedule_date", { ascending: true })
       .order("schedule_time", { ascending: true });
 
-    if (status) {
-      query = query.eq("status", status);
-    }
+    if (status) query = query.eq("status", status);
 
     const { data, error } = await query;
     if (error) throw error;
 
-    console.log("Fetched bookings:", data); // debug
-
-    res.json(Array.isArray(data) ? data : []); // ensure array
+    res.json(Array.isArray(data) ? data : []);
   } catch (err) {
     console.error("Error fetching bookings:", err);
     res.status(500).json({ error: err.message });
@@ -118,9 +133,7 @@ app.get("/bookings/:id", async (req, res) => {
     const { id } = req.params;
 
     const { data, error } = await supabase.from("bookings").select("*").eq("id", id).single();
-    if (error || !data) {
-      return res.status(404).json({ error: "Booking not found" });
-    }
+    if (error || !data) return res.status(404).json({ error: "Booking not found" });
 
     res.json(data);
   } catch (err) {
