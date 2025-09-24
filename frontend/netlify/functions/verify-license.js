@@ -5,7 +5,7 @@ const {
   DetectTextCommand,
 } = require("@aws-sdk/client-rekognition");
 
-// Keywords commonly found on SA licences (add/remove as you like)
+// Keywords commonly found on SA licences (add/remove as needed)
 const KEYWORDS = [
   "DRIVING LICENCE",
   "DRIVING LICENSE",
@@ -23,11 +23,12 @@ const KEYWORDS = [
   "MALE",
 ];
 
+// Score result based on labels + OCR text
 function scoreResult({ labels, lines }) {
   const reasons = [];
   let score = 0;
 
-  // 1) Labels confidence (Document/ID/License/Text)
+  // 1. Labels
   const labelHit = labels.some(
     (l) =>
       ["DOCUMENT", "ID CARDS", "LICENSE", "DRIVER LICENSE", "TEXT"].includes(
@@ -41,21 +42,21 @@ function scoreResult({ labels, lines }) {
 
   const allText = lines.join(" ").toUpperCase();
 
-  // 2) Keywords found
+  // 2. Keywords
   const keywordMatches = KEYWORDS.filter((k) => allText.includes(k));
   if (keywordMatches.length >= 2) {
     score += 40;
     reasons.push(`Keywords found: ${keywordMatches.slice(0, 3).join(", ")}`);
   }
 
-  // 3) Date pattern dd/mm/yyyy
+  // 3. Date dd/mm/yyyy
   const hasDate = /\b\d{2}[\/\-]\d{2}[\/\-]\d{4}\b/.test(allText);
   if (hasDate) {
     score += 10;
     reasons.push("Date detected (dd/mm/yyyy)");
   }
 
-  // 4) SA ID number pattern (13 digits)
+  // 4. SA ID number (13 digits)
   const has13Digits = /\b\d{13}\b/.test(allText.replace(/\s/g, ""));
   if (has13Digits) {
     score += 10;
@@ -76,10 +77,9 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: "imageBase64 missing" }) };
     }
 
-    // Convert base64 → bytes
     const bytes = Buffer.from(imageBase64, "base64");
 
-    // ✅ Use Netlify-safe custom env variable names
+    // ✅ Use custom Netlify-safe env vars
     const client = new RekognitionClient({
       region: process.env.MY_AWS_REGION,
       credentials: {
@@ -88,7 +88,6 @@ exports.handler = async (event) => {
       },
     });
 
-    // Detect labels
     const labelsRes = await client.send(
       new DetectLabelsCommand({
         Image: { Bytes: bytes },
@@ -97,7 +96,6 @@ exports.handler = async (event) => {
       })
     );
 
-    // Detect text (OCR)
     const textRes = await client.send(
       new DetectTextCommand({
         Image: { Bytes: bytes },
