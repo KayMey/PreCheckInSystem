@@ -79,7 +79,7 @@ app.post("/bookings", async (req, res) => {
         params: {
           apiKey: CLICKATELL_API_KEY,
           to: cellphone,
-          content: `Hello ${firstname}, complete your pre-check-in here: ${preCheckinLink}`,
+          content: `Hello ${firstname}, your booking is confirmed for ${schedule_date} at ${schedule_time}. Please fill in the pre-check-in form before arriving: ${preCheckinLink}`,
         },
         validateStatus: () => true,
       });
@@ -104,10 +104,10 @@ app.post("/bookings", async (req, res) => {
   }
 });
 
-// Get all bookings
+// Get all bookings (with optional status/date filter)
 app.get("/bookings", async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, date } = req.query;
 
     let query = supabase
       .from("bookings")
@@ -116,6 +116,7 @@ app.get("/bookings", async (req, res) => {
       .order("schedule_time", { ascending: true });
 
     if (status) query = query.eq("status", status);
+    if (date) query = query.eq("schedule_date", date);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -142,7 +143,7 @@ app.get("/bookings/:id", async (req, res) => {
   }
 });
 
-// ✅ Pre-check-in update (now with ID Number)
+// ✅ Pre-check-in update (with ID number support)
 app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) => {
   try {
     const { id } = req.params;
@@ -170,7 +171,7 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
         dropoff_firstname,
         dropoff_surname,
         dropoff_phone,
-        dropoff_id_number, // ✅ save ID Number
+        dropoff_id_number,
         license_photo_url: licenseUrl,
         status: "prechecked",
       })
