@@ -5,6 +5,7 @@ export default function Home() {
     <div
       style={{
         display: "flex",
+        flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
         minHeight: "100vh",
@@ -12,31 +13,23 @@ export default function Home() {
         fontFamily: "sans-serif",
       }}
     >
-      <div
-        style={{
-          background: "#fff",
-          padding: "40px",
-          borderRadius: "10px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          textAlign: "center",
-          maxWidth: "500px",
-          width: "100%",
-        }}
-      >
-        <h1 style={{ marginBottom: "20px" }}>Welcome</h1>
-        <p style={{ marginBottom: "30px" }}>
-          Please choose an option below
-        </p>
+      <h1 style={{ marginBottom: "10px", fontSize: "28px", color: "#333" }}>
+        Pre-Check-In Demo System
+      </h1>
+      <p style={{ marginBottom: "30px", fontSize: "16px", color: "#555" }}>
+        Welcome! Please choose an option below
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         <Link
           to="/employee/create"
           style={{
-            display: "block",
-            marginBottom: "15px",
-            padding: "12px",
+            padding: "12px 24px",
             background: "#007bff",
-            color: "white",
+            color: "#fff",
             textDecoration: "none",
-            borderRadius: "5px",
+            borderRadius: "6px",
+            textAlign: "center",
+            fontWeight: "bold",
           }}
         >
           Create Booking
@@ -44,12 +37,13 @@ export default function Home() {
         <Link
           to="/employee/view"
           style={{
-            display: "block",
-            padding: "12px",
-            background: "green",
-            color: "white",
+            padding: "12px 24px",
+            background: "#28a745",
+            color: "#fff",
             textDecoration: "none",
-            borderRadius: "5px",
+            borderRadius: "6px",
+            textAlign: "center",
+            fontWeight: "bold",
           }}
         >
           View Bookings

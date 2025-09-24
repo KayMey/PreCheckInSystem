@@ -13,13 +13,9 @@ export default function ViewBookings() {
       .get(`${API_URL}/bookings`, { params: { status: tab } })
       .then((res) => {
         const data = res.data;
-        if (Array.isArray(data)) {
-          setRows(data);
-        } else if (Array.isArray(data?.bookings)) {
-          setRows(data.bookings);
-        } else {
-          setRows([]);
-        }
+        if (Array.isArray(data)) setRows(data);
+        else if (Array.isArray(data?.bookings)) setRows(data.bookings);
+        else setRows([]);
       })
       .catch((err) => {
         alert(err.response?.data?.error || err.message);
@@ -33,10 +29,10 @@ export default function ViewBookings() {
       style={{
         display: "flex",
         justifyContent: "center",
-        alignItems: "flex-start",
+        alignItems: "center",
         minHeight: "100vh",
         background: "#f8f9fa",
-        paddingTop: "40px",
+        fontFamily: "sans-serif",
       }}
     >
       <div
@@ -45,23 +41,25 @@ export default function ViewBookings() {
           padding: "30px",
           borderRadius: "10px",
           boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          maxWidth: "1000px",
           width: "100%",
+          maxWidth: "900px",
         }}
       >
+        <h1 style={{ textAlign: "center", marginBottom: "20px", color: "#333" }}>
+          Pre-Check-In Demo System
+        </h1>
         <h2 style={{ textAlign: "center", marginBottom: "20px" }}>Bookings</h2>
 
-        <div style={{ marginBottom: 20, textAlign: "center" }}>
+        <div style={{ marginBottom: 12, textAlign: "center" }}>
           <button
             onClick={() => setTab("not-prechecked")}
             style={{
-              marginRight: 10,
-              padding: "10px 20px",
-              background: tab === "not-prechecked" ? "#007bff" : "#ddd",
-              color: tab === "not-prechecked" ? "white" : "black",
+              marginRight: 8,
+              padding: "6px 12px",
+              background: tab === "not-prechecked" ? "#007bff" : "#eee",
+              color: tab === "not-prechecked" ? "#fff" : "#333",
               border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
+              borderRadius: "4px",
             }}
           >
             Still to pre-check-in
@@ -69,12 +67,11 @@ export default function ViewBookings() {
           <button
             onClick={() => setTab("prechecked")}
             style={{
-              padding: "10px 20px",
-              background: tab === "prechecked" ? "green" : "#ddd",
-              color: tab === "prechecked" ? "white" : "black",
+              padding: "6px 12px",
+              background: tab === "prechecked" ? "#28a745" : "#eee",
+              color: tab === "prechecked" ? "#fff" : "#333",
               border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
+              borderRadius: "4px",
             }}
           >
             Already pre-checked-in
@@ -88,11 +85,7 @@ export default function ViewBookings() {
             border="1"
             cellPadding="8"
             cellSpacing="0"
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              textAlign: "center",
-            }}
+            style={{ width: "100%", borderCollapse: "collapse" }}
           >
             <thead style={{ background: "#f1f1f1" }}>
               <tr>
@@ -102,16 +95,11 @@ export default function ViewBookings() {
                 <th>Name</th>
                 <th>Cell</th>
                 <th>Status</th>
-                {tab === "prechecked" && (
-                  <>
-                    <th>ID Number</th>
-                    <th>License</th>
-                  </>
-                )}
+                {tab === "prechecked" && <th>License</th>}
               </tr>
             </thead>
             <tbody>
-              {Array.isArray(rows) && rows.length > 0 ? (
+              {rows.length > 0 ? (
                 rows.map((r) => (
                   <tr key={r.id}>
                     <td>{r.schedule_date}</td>
@@ -123,24 +111,21 @@ export default function ViewBookings() {
                     <td>{r.cellphone}</td>
                     <td>{r.status}</td>
                     {tab === "prechecked" && (
-                      <>
-                        <td>{r.dropoff_id_number || "-"}</td>
-                        <td>
-                          {r.license_photo_url ? (
-                            <a href={r.license_photo_url} target="_blank" rel="noreferrer">
-                              View photo
-                            </a>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                      </>
+                      <td>
+                        {r.license_photo_url ? (
+                          <a href={r.license_photo_url} target="_blank" rel="noreferrer">
+                            View photo
+                          </a>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                     )}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={tab === "prechecked" ? 8 : 6} style={{ textAlign: "center" }}>
+                  <td colSpan={tab === "prechecked" ? 7 : 6} style={{ textAlign: "center" }}>
                     No bookings
                   </td>
                 </tr>
