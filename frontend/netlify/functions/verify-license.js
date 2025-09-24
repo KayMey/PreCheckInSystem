@@ -79,12 +79,12 @@ exports.handler = async (event) => {
     // Convert base64 → bytes
     const bytes = Buffer.from(imageBase64, "base64");
 
-    // ✅ Use your custom env variable names
+    // ✅ Use Netlify-safe custom env variable names
     const client = new RekognitionClient({
-      region: process.env.AWS_REGION_VAR,
+      region: process.env.MY_AWS_REGION,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS,
+        accessKeyId: process.env.MY_AWS_ACCESS_KEY,
+        secretAccessKey: process.env.MY_AWS_SECRET_ACCESS,
       },
     });
 
