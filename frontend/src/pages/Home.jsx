@@ -1,52 +1,65 @@
 import { Link } from "react-router-dom";
 
-export default function Home() {
+export default function HomePage() {
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
         minHeight: "100vh",
         background: "#f8f9fa",
-        fontFamily: "sans-serif",
       }}
     >
-      <h1 style={{ marginBottom: "10px", fontSize: "28px", color: "#333" }}>
-        Pre-Check-In Demo System
-      </h1>
-      <p style={{ marginBottom: "30px", fontSize: "16px", color: "#555" }}>
-        Welcome! Please choose an option below
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        <Link
-          to="/employee/create"
-          style={{
-            padding: "12px 24px",
-            background: "#007bff",
-            color: "#fff",
-            textDecoration: "none",
-            borderRadius: "6px",
-            textAlign: "center",
-            fontWeight: "bold",
-          }}
-        >
-          Create Booking
+      <div
+        style={{
+          background: "#fff",
+          padding: "40px",
+          borderRadius: "12px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          width: "100%",
+          maxWidth: "600px",
+          textAlign: "center",
+        }}
+      >
+        <h1 style={{ marginBottom: "20px" }}>Pre-Check-In Demo System</h1>
+        <p style={{ marginBottom: "30px", fontSize: "16px", color: "#555" }}>
+          Welcome! Please choose an option below
+        </p>
+
+        <Link to="/employee/create">
+          <button
+            style={{
+              width: "100%",
+              padding: "12px",
+              background: "#007bff",
+              color: "#fff",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "16px",
+              cursor: "pointer",
+              marginBottom: "12px",
+            }}
+          >
+            Create Booking
+          </button>
         </Link>
-        <Link
-          to="/employee/view"
-          style={{
-            padding: "12px 24px",
-            background: "#28a745",
-            color: "#fff",
-            textDecoration: "none",
-            borderRadius: "6px",
-            textAlign: "center",
-            fontWeight: "bold",
-          }}
-        >
-          View Bookings
+
+        <Link to="/employee/view">
+          <button
+            style={{
+              width: "100%",
+              padding: "12px",
+              background: "#28a745",
+              color: "#fff",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "16px",
+              cursor: "pointer",
+            }}
+          >
+            View Bookings
+          </button>
         </Link>
       </div>
     </div>

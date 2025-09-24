@@ -12,15 +12,12 @@ export default function CreateBooking() {
     cellphone: "",
   });
 
-  const [loading, setLoading] = useState(false);
-
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     try {
       await axios.post(`${API_URL}/bookings`, form);
       alert("✅ Booking created successfully!");
@@ -33,9 +30,7 @@ export default function CreateBooking() {
         cellphone: "",
       });
     } catch (err) {
-      alert(err.response?.data?.error || "Error creating booking");
-    } finally {
-      setLoading(false);
+      alert(err.response?.data?.error || err.message);
     }
   };
 
@@ -47,20 +42,19 @@ export default function CreateBooking() {
         alignItems: "center",
         minHeight: "100vh",
         background: "#f8f9fa",
-        fontFamily: "sans-serif",
       }}
     >
       <div
         style={{
           background: "#fff",
-          padding: "30px",
-          borderRadius: "10px",
+          padding: "40px",
+          borderRadius: "12px",
           boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
           width: "100%",
-          maxWidth: "480px",
+          maxWidth: "600px",
         }}
       >
-        <h1 style={{ textAlign: "center", marginBottom: "20px", color: "#333" }}>
+        <h1 style={{ textAlign: "center", marginBottom: "20px" }}>
           Pre-Check-In Demo System
         </h1>
         <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
@@ -68,78 +62,51 @@ export default function CreateBooking() {
         </h2>
 
         <form onSubmit={handleSubmit}>
-          <label>Booking Name</label>
-          <input
-            name="booking_name"
-            value={form.booking_name}
-            onChange={handleChange}
-            required
-            style={{ width: "100%", padding: "10px", marginBottom: "12px" }}
-          />
-
-          <label>Firstname</label>
-          <input
-            name="firstname"
-            value={form.firstname}
-            onChange={handleChange}
-            required
-            style={{ width: "100%", padding: "10px", marginBottom: "12px" }}
-          />
-
-          <label>Surname</label>
-          <input
-            name="surname"
-            value={form.surname}
-            onChange={handleChange}
-            required
-            style={{ width: "100%", padding: "10px", marginBottom: "12px" }}
-          />
-
-          <label>Schedule Date</label>
-          <input
-            type="date"
-            name="schedule_date"
-            value={form.schedule_date}
-            onChange={handleChange}
-            required
-            style={{ width: "100%", padding: "10px", marginBottom: "12px" }}
-          />
-
-          <label>Schedule Time</label>
-          <input
-            type="time"
-            name="schedule_time"
-            value={form.schedule_time}
-            onChange={handleChange}
-            required
-            style={{ width: "100%", padding: "10px", marginBottom: "12px" }}
-          />
-
-          <label>Cellphone</label>
-          <input
-            name="cellphone"
-            value={form.cellphone}
-            onChange={handleChange}
-            required
-            placeholder="e.g. 276XXXXXXXX"
-            style={{ width: "100%", padding: "10px", marginBottom: "12px" }}
-          />
+          {[
+            { label: "Booking Name", name: "booking_name" },
+            { label: "Firstname", name: "firstname" },
+            { label: "Surname", name: "surname" },
+            { label: "Schedule Date", name: "schedule_date", type: "date" },
+            { label: "Schedule Time", name: "schedule_time", type: "time" },
+            { label: "Cellphone (e.g. 276XXXXXXXX)", name: "cellphone" },
+          ].map((field) => (
+            <div key={field.name} style={{ marginBottom: "15px" }}>
+              <label
+                style={{ display: "block", marginBottom: "6px", color: "#333" }}
+              >
+                {field.label}
+              </label>
+              <input
+                type={field.type || "text"}
+                name={field.name}
+                value={form[field.name]}
+                onChange={handleChange}
+                required
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+          ))}
 
           <button
             type="submit"
-            disabled={loading}
             style={{
               width: "100%",
               padding: "12px",
               background: "#007bff",
-              color: "white",
+              color: "#fff",
               border: "none",
               borderRadius: "6px",
-              cursor: "pointer",
               fontSize: "16px",
+              cursor: "pointer",
             }}
           >
-            {loading ? "Creating..." : "Create Booking"}
+            Create Booking
           </button>
         </form>
       </div>
