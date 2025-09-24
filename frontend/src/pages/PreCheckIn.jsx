@@ -197,7 +197,9 @@ export default function PreCheckin() {
             </p>
 
             <form onSubmit={handleSubmit} style={{ marginTop: "20px" }}>
-              <label>First Name:</label>
+              <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", color: "#000" }}>
+                First Name:
+              </label>
               <input
                 type="text"
                 value={dropoffFirstname}
@@ -206,7 +208,9 @@ export default function PreCheckin() {
                 style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
               />
 
-              <label>Last Name:</label>
+              <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", color: "#000" }}>
+                Last Name:
+              </label>
               <input
                 type="text"
                 value={dropoffSurname}
@@ -215,7 +219,9 @@ export default function PreCheckin() {
                 style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
               />
 
-              <label>Cell Phone:</label>
+              <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", color: "#000" }}>
+                Cell Phone:
+              </label>
               <input
                 type="text"
                 value={dropoffPhone}
@@ -225,7 +231,9 @@ export default function PreCheckin() {
                 style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
               />
 
-              <label>ID Number:</label>
+              <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", color: "#000" }}>
+                ID Number:
+              </label>
               <input
                 type="text"
                 value={dropoffIdNumber}
@@ -234,7 +242,9 @@ export default function PreCheckin() {
                 style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
               />
 
-              <label>Upload Driver’s Licence (front):</label>
+              <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", color: "#000" }}>
+                Upload Driver’s Licence (front):
+              </label>
               <input
                 id="lic-input"
                 type="file"
