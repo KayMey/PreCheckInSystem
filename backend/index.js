@@ -38,7 +38,6 @@ app.use(
 );
 
 app.options("*", cors()); // preflight
-
 app.use(bodyParser.json());
 
 // Multer for file uploads
@@ -72,14 +71,16 @@ app.post("/bookings", async (req, res) => {
     if (error) throw error;
     const booking = data[0];
 
+    // ✅ fixed variable name
     const preCheckinLink = `${process.env.FRONTEND_URL}/precheckin/${booking.id}`;
 
+    // Send SMS
     try {
       const smsResponse = await axios.get(CLICKATELL_URL, {
         params: {
           apiKey: CLICKATELL_API_KEY,
           to: cellphone,
-          content: `Hello ${firstname}, your booking has been confirmed for ${schedule_date} at ${schedule_time}. Please fill in the pre-check-in form: ${precheckinLink}`,
+          content: `Hello ${firstname}, your booking has been confirmed for ${schedule_date} at ${schedule_time}. Please fill in the pre-check-in form: ${preCheckinLink}`,
         },
         validateStatus: () => true,
       });
@@ -93,13 +94,13 @@ app.post("/bookings", async (req, res) => {
         });
       }
     } catch (smsErr) {
-      console.error("Failed to send SMS:", smsErr.message);
+      console.error("❌ Failed to send SMS:", smsErr.message);
       return res.status(500).json({ error: "Clickatell request failed" });
     }
 
     res.status(201).json({ booking });
   } catch (err) {
-    console.error("Error creating booking:", err);
+    console.error("❌ Error creating booking:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -122,7 +123,7 @@ app.get("/bookings", async (req, res) => {
 
     res.json(Array.isArray(data) ? data : []);
   } catch (err) {
-    console.error("Error fetching bookings:", err);
+    console.error("❌ Error fetching bookings:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -137,12 +138,12 @@ app.get("/bookings/:id", async (req, res) => {
 
     res.json(data);
   } catch (err) {
-    console.error("Error fetching booking:", err);
+    console.error("❌ Error fetching booking:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Pre-check-in update (now with ID Number)
+// ✅ Pre-check-in update (with ID number + license upload)
 app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) => {
   try {
     const { id } = req.params;
@@ -170,7 +171,7 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
         dropoff_firstname,
         dropoff_surname,
         dropoff_phone,
-        dropoff_id_number, // ✅ save ID Number
+        dropoff_id_number,
         license_photo_url: licenseUrl,
         status: "prechecked",
       })
