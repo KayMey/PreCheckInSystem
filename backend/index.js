@@ -9,22 +9,29 @@ import path from "path";
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// =======================
 // Supabase setup
+// =======================
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+// =======================
 // Clickatell setup
+// =======================
 const CLICKATELL_API_KEY = (process.env.CLICKATELL_API_KEY || "").trim();
 const CLICKATELL_URL = "https://platform.clickatell.com/messages/http/send";
 
-// ✅ Improved CORS setup
+// =======================
+// CORS setup
+// =======================
 const allowedOrigins = [
-  "http://localhost:5173", // Vite local dev
-  "https://nimble-kangaroo-5dfc99.netlify.app", // Netlify frontend
+  process.env.FRONTEND_URL || "https://nimble-kangaroo-5dfc99.netlify.app",
+  "http://localhost:5173", // local Vite dev
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
+      console.log("CORS request from:", origin); // 🔍 Debug
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -37,17 +44,20 @@ app.use(
   })
 );
 
-app.options("*", cors()); // ✅ Allow preflight for all routes
+// ✅ Allow preflight
+app.options("*", cors());
 
 app.use(bodyParser.json());
 
-// Multer for file uploads
+// =======================
+// File upload setup
+// =======================
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-/* ========================
-   ROUTES
-======================== */
+// =======================
+// ROUTES
+// =======================
 
 // Create booking
 app.post("/bookings", async (req, res) => {
@@ -72,6 +82,7 @@ app.post("/bookings", async (req, res) => {
     if (error) throw error;
     const booking = data[0];
 
+    // Pre-checkin link sent via SMS
     const preCheckinLink = `${process.env.FRONTEND_URL}/precheckin/${booking.id}`;
 
     try {
@@ -190,6 +201,9 @@ app.get("/", (req, res) => {
   res.send("Backend is running");
 });
 
+// =======================
+// Start server
+// =======================
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
