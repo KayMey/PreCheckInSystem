@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-export default function PreCheckIn() {
+export default function PreCheckin() {
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -16,7 +16,8 @@ export default function PreCheckIn() {
   const [dropoffPhone, setDropoffPhone] = useState("");
   const [file, setFile] = useState(null);
 
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+  // ✅ use correct env var
+  const BACKEND_URL = import.meta.env.VITE_API_URL;
 
   // Fetch booking details
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function PreCheckIn() {
       }
     };
     fetchBooking();
-  }, [id]);
+  }, [id, BACKEND_URL]);
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -56,7 +57,7 @@ export default function PreCheckIn() {
       alert("✅ Submitted successfully!");
       navigate("/employee/view");
     } catch (err) {
-      console.error(err);
+      console.error("Pre-check-in error:", err.response?.data || err.message);
       setError("Failed to complete pre-check-in. Try again.");
     }
   };
@@ -95,7 +96,7 @@ export default function PreCheckIn() {
         <p><strong>Time:</strong> {booking.schedule_time}</p>
 
         <form onSubmit={handleSubmit} style={{ marginTop: "20px" }}>
-          <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
+          <label style={{ display: "block", marginBottom: "5px", color: "#000" }}>
             First Name:
           </label>
           <input
@@ -106,7 +107,7 @@ export default function PreCheckIn() {
             style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
           />
 
-          <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
+          <label style={{ display: "block", marginBottom: "5px", color: "#000" }}>
             Last Name:
           </label>
           <input
@@ -117,7 +118,7 @@ export default function PreCheckIn() {
             style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
           />
 
-          <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
+          <label style={{ display: "block", marginBottom: "5px", color: "#000" }}>
             Cell Phone:
           </label>
           <input
@@ -129,7 +130,7 @@ export default function PreCheckIn() {
             style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
           />
 
-          <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
+          <label style={{ display: "block", marginBottom: "5px", color: "#000" }}>
             Upload Driver’s License:
           </label>
           <input
