@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-export default function PreCheckin() {
+export default function PreCheckIn() {
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -18,7 +18,7 @@ export default function PreCheckin() {
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-  // 🔹 Fetch booking details
+  // Fetch booking details
   useEffect(() => {
     const fetchBooking = async () => {
       try {
@@ -33,7 +33,7 @@ export default function PreCheckin() {
     fetchBooking();
   }, [id]);
 
-  // 🔹 Handle form submission
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -95,7 +95,9 @@ export default function PreCheckin() {
         <p><strong>Time:</strong> {booking.schedule_time}</p>
 
         <form onSubmit={handleSubmit} style={{ marginTop: "20px" }}>
-          <label>First Name:</label>
+          <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
+            First Name:
+          </label>
           <input
             type="text"
             value={dropoffFirstname}
@@ -104,7 +106,9 @@ export default function PreCheckin() {
             style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
           />
 
-          <label>Last Name:</label>
+          <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
+            Last Name:
+          </label>
           <input
             type="text"
             value={dropoffSurname}
@@ -113,7 +117,9 @@ export default function PreCheckin() {
             style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
           />
 
-          <label>Cell Phone:</label>
+          <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
+            Cell Phone:
+          </label>
           <input
             type="text"
             value={dropoffPhone}
@@ -123,7 +129,9 @@ export default function PreCheckin() {
             style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
           />
 
-          <label>Upload Driver’s License:</label>
+          <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
+            Upload Driver’s License:
+          </label>
           <input
             type="file"
             accept="image/*"
@@ -149,107 +157,6 @@ export default function PreCheckin() {
           </button>
         </form>
       </div>
-    </div>import React, { useState } from "react";
-import axios from "axios";
-
-export default function PreCheckIn({ bookingId }) {
-  const [dropoffFirstname, setDropoffFirstname] = useState("");
-  const [dropoffSurname, setDropoffSurname] = useState("");
-  const [dropoffPhone, setDropoffPhone] = useState("");
-  const [license, setLicense] = useState(null);
-
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log("Submitting form...");
-
-    try {
-      const formData = new FormData();
-      formData.append("dropoff_firstname", dropoffFirstname);
-      formData.append("dropoff_surname", dropoffSurname);
-      formData.append("dropoff_phone", dropoffPhone);
-      if (license) formData.append("license", license);
-
-      const res = await axios.put(
-        `${BACKEND_URL}/bookings/${bookingId}/precheckin`,
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-
-      console.log("Pre-check-in success:", res.data);
-      alert("Pre-check-in completed!");
-    } catch (err) {
-      console.error("Error submitting pre-check-in:", err);
-      alert("Something went wrong. Try again.");
-    }
-  };
-
-  return (
-    <div style={{ padding: "20px", maxWidth: "400px", margin: "auto" }}>
-      <h2>Pre-Check-In</h2>
-      <form onSubmit={handleSubmit}>
-        <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
-          First Name
-        </label>
-        <input
-          type="text"
-          value={dropoffFirstname}
-          onChange={(e) => setDropoffFirstname(e.target.value)}
-          required
-          style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-        />
-
-        <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
-          Surname
-        </label>
-        <input
-          type="text"
-          value={dropoffSurname}
-          onChange={(e) => setDropoffSurname(e.target.value)}
-          required
-          style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-        />
-
-        <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
-          Phone Number
-        </label>
-        <input
-          type="text"
-          value={dropoffPhone}
-          onChange={(e) => setDropoffPhone(e.target.value)}
-          placeholder="e.g. 276XXXXXXXX"
-          required
-          style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-        />
-
-        <label style={{ display: "block", marginBottom: "5px", color: "black" }}>
-          Upload Driver’s License
-        </label>
-        <input
-          type="file"
-          onChange={(e) => setLicense(e.target.files[0])}
-          required
-          style={{ marginBottom: "15px" }}
-        />
-
-        <button
-          type="submit"
-          style={{
-            width: "100%",
-            padding: "10px",
-            background: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-          }}
-        >
-          Submit
-        </button>
-      </form>
     </div>
-  );
-}
-
   );
 }
