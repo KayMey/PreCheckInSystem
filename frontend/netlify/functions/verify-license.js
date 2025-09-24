@@ -5,7 +5,7 @@ const {
   DetectTextCommand,
 } = require("@aws-sdk/client-rekognition");
 
-// Keywords commonly found on SA licences (add/remove as needed)
+// Keywords commonly found on SA licences
 const KEYWORDS = [
   "DRIVING LICENCE",
   "DRIVING LICENSE",
@@ -23,12 +23,11 @@ const KEYWORDS = [
   "MALE",
 ];
 
-// Score result based on labels + OCR text
 function scoreResult({ labels, lines }) {
   const reasons = [];
   let score = 0;
 
-  // 1. Labels
+  // 1) Labels confidence (Document/ID/License/Text)
   const labelHit = labels.some(
     (l) =>
       ["DOCUMENT", "ID CARDS", "LICENSE", "DRIVER LICENSE", "TEXT"].includes(
@@ -42,21 +41,21 @@ function scoreResult({ labels, lines }) {
 
   const allText = lines.join(" ").toUpperCase();
 
-  // 2. Keywords
+  // 2) Keywords found
   const keywordMatches = KEYWORDS.filter((k) => allText.includes(k));
   if (keywordMatches.length >= 2) {
     score += 40;
     reasons.push(`Keywords found: ${keywordMatches.slice(0, 3).join(", ")}`);
   }
 
-  // 3. Date dd/mm/yyyy
+  // 3) Date pattern dd/mm/yyyy
   const hasDate = /\b\d{2}[\/\-]\d{2}[\/\-]\d{4}\b/.test(allText);
   if (hasDate) {
     score += 10;
     reasons.push("Date detected (dd/mm/yyyy)");
   }
 
-  // 4. SA ID number (13 digits)
+  // 4) SA ID number pattern (13 digits)
   const has13Digits = /\b\d{13}\b/.test(allText.replace(/\s/g, ""));
   if (has13Digits) {
     score += 10;
@@ -121,7 +120,12 @@ exports.handler = async (event) => {
       }),
     };
   } catch (err) {
-    console.error(err);
-    return { statusCode: 500, body: JSON.stringify({ error: "Server error" }) };
+    // 👇 Extra debug logging
+    console.error("AWS Rekognition error:", err);
+    return {
+      statusCode: 500,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: err.message || "Unknown AWS error" }),
+    };
   }
 };
