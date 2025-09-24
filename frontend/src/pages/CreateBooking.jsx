@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { API_URL } from "../api";
 
@@ -8,95 +8,96 @@ export default function CreateBooking() {
     firstname: "",
     surname: "",
     schedule_date: "",
-    schedule_time: "07:00",
-    cellphone: ""
+    schedule_time: "",
+    cellphone: "",
   });
-  const [status, setStatus] = useState("");
 
-  // Build 10-minute time slots from 07:00 to 09:00 (inclusive of 09:00)
-  const times = useMemo(() => {
-    const out = [];
-    for (let h = 7; h <= 9; h++) {
-      for (let m = 0; m < 60; m += 10) {
-        if (h === 9 && m > 0) break; // stop at 09:00
-        const hh = String(h).padStart(2, "0");
-        const mm = String(m).padStart(2, "0");
-        out.push(`${hh}:${mm}`);
-      }
-    }
-    return out;
-  }, []);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setStatus("Submitting…");
-
-    // SA number normalisation: remove non-digits, ensure it starts with 27
-    const digits = form.cellphone.replace(/[^\d]/g, "");
-    if (!digits.startsWith("27")) {
-      setStatus("Phone must be in international format, e.g. 27XXXXXXXXX");
-      return;
-    }
-
+    setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/bookings`, {
-        ...form,
-        cellphone: digits
+      await axios.post(`${API_URL}/bookings`, form);
+      alert("Booking created and SMS sent!");
+      setForm({
+        booking_name: "",
+        firstname: "",
+        surname: "",
+        schedule_date: "",
+        schedule_time: "",
+        cellphone: "",
       });
-      if (res.data?.success) {
-        setStatus("✅ Booking saved and SMS sent!");
-        // optional: clear the form after success
-        // setForm({ booking_name:"", firstname:"", surname:"", schedule_date:"", schedule_time:"07:00", cellphone:"" });
-      } else {
-        setStatus("⚠️ Unexpected response from server.");
-      }
     } catch (err) {
-      setStatus(`❌ Error: ${err.response?.data?.error || err.message}`);
+      alert(err.response?.data?.error || "Error creating booking");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{maxWidth: 640, margin: "30px auto", fontFamily: "sans-serif"}}>
-      <h2>Create Booking</h2>
-      <form onSubmit={handleSubmit} style={{display: "grid", gap: 10}}>
-        <label>
-          Booking name
-          <input name="booking_name" value={form.booking_name} onChange={handleChange} required />
-        </label>
-        <label>
-          First name
-          <input name="firstname" value={form.firstname} onChange={handleChange} required />
-        </label>
-        <label>
-          Surname
-          <input name="surname" value={form.surname} onChange={handleChange} required />
-        </label>
-        <label>
-          Schedule date
-          <input type="date" name="schedule_date" value={form.schedule_date} onChange={handleChange} required />
-        </label>
-        <label>
-          Schedule time
-          <select name="schedule_time" value={form.schedule_time} onChange={handleChange}>
-            {times.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Cellphone (e.g. 27XXXXXXXXX)
-          <input name="cellphone" value={form.cellphone} onChange={handleChange} required />
-        </label>
-
-        <button type="submit" style={{padding: "10px 16px"}}>Schedule</button>
-      </form>
-
-      {status && <p style={{marginTop: 12}}>{status}</p>}
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        background: "#f8f9fa",
+      }}
+    >
+      <div
+        style={{
+          background: "#fff",
+          padding: "30px",
+          borderRadius: "10px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          width: "100%",
+          maxWidth: "500px",
+        }}
+      >
+        <h2 style={{ textAlign: "center", marginBottom: "20px" }}>Create Booking</h2>
+        <form onSubmit={handleSubmit}>
+          {["booking_name", "firstname", "surname", "schedule_date", "schedule_time", "cellphone"].map((field) => (
+            <div key={field} style={{ marginBottom: "15px" }}>
+              <label style={{ display: "block", marginBottom: "5px", color: "#000" }}>
+                {field.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              </label>
+              <input
+                type={field.includes("date") ? "date" : field.includes("time") ? "time" : "text"}
+                name={field}
+                value={form[field]}
+                onChange={handleChange}
+                required
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  border: "1px solid #ccc",
+                  borderRadius: "5px",
+                }}
+              />
+            </div>
+          ))}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "12px",
+              background: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+            }}
+          >
+            {loading ? "Saving..." : "Create Booking"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
