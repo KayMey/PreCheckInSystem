@@ -1,9 +1,6 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
-export default function Home() {
-  const navigate = useNavigate();
-
+export default function HomePage() {
   return (
     <div
       style={{
@@ -12,59 +9,58 @@ export default function Home() {
         alignItems: "center",
         minHeight: "100vh",
         background: "#f8f9fa",
-        padding: "20px",
       }}
     >
       <div
         style={{
-          background: "white",
+          background: "#fff",
           padding: "40px",
           borderRadius: "12px",
           boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          textAlign: "center",
-          maxWidth: "600px",
           width: "100%",
+          maxWidth: "600px",
+          textAlign: "center",
         }}
       >
-        <h1 style={{ marginBottom: "10px" }}>Pre-Check-In Demo System</h1>
-        <p style={{ marginBottom: "20px" }}>
+        <h1 style={{ marginBottom: "20px" }}>Pre-Check-In Demo System</h1>
+        <p style={{ marginBottom: "30px", fontSize: "16px", color: "#555" }}>
           Welcome! Please choose an option below
         </p>
 
-        <button
-          onClick={() => navigate("/employee/create")}
-          style={{
-            display: "block",
-            width: "100%",
-            padding: "12px",
-            marginBottom: "12px",
-            background: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            fontSize: "16px",
-            cursor: "pointer",
-          }}
-        >
-          Create Booking
-        </button>
+        <Link to="/employee/create">
+          <button
+            style={{
+              width: "100%",
+              padding: "12px",
+              background: "#007bff",
+              color: "#fff",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "16px",
+              cursor: "pointer",
+              marginBottom: "12px",
+            }}
+          >
+            Create Booking
+          </button>
+        </Link>
 
-        <button
-          onClick={() => navigate("/employee/view")}
-          style={{
-            display: "block",
-            width: "100%",
-            padding: "12px",
-            background: "#28a745",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            fontSize: "16px",
-            cursor: "pointer",
-          }}
-        >
-          View Bookings
-        </button>
+        <Link to="/employee/view">
+          <button
+            style={{
+              width: "100%",
+              padding: "12px",
+              background: "#28a745",
+              color: "#fff",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "16px",
+              cursor: "pointer",
+            }}
+          >
+            View Bookings
+          </button>
+        </Link>
       </div>
     </div>
   );
