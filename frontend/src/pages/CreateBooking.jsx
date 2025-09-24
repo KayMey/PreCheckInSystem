@@ -3,15 +3,18 @@ import axios from "axios";
 import { API_URL } from "../api";
 
 export default function CreateBooking() {
-  const [bookingName, setBookingName] = useState("");
-  const [firstname, setFirstname] = useState("");
-  const [surname, setSurname] = useState("");
-  const [scheduleDate, setScheduleDate] = useState("");
-  const [scheduleTime, setScheduleTime] = useState("");
-  const [cellphone, setCellphone] = useState("");
+  const [form, setForm] = useState({
+    booking_name: "",
+    firstname: "",
+    surname: "",
+    schedule_date: "",
+    schedule_time: "",
+    cellphone: "",
+  });
+
   const [availableTimes, setAvailableTimes] = useState([]);
 
-  // generate all slots 07:00 - 09:00 in 10-min steps
+  // All slots from 07:00 to 09:00 in 10 min steps
   const allSlots = Array.from({ length: 13 }, (_, i) => {
     const h = 7 + Math.floor(i / 6);
     const m = (i % 6) * 10;
@@ -19,108 +22,136 @@ export default function CreateBooking() {
   });
 
   useEffect(() => {
-    if (!scheduleDate) {
+    if (!form.schedule_date) {
       setAvailableTimes([]);
       return;
     }
+
     axios
-      .get(`${API_URL}/bookings`, { params: { status: "" } })
+      .get(`${API_URL}/bookings`)
       .then((res) => {
         const bookings = res.data || [];
         const taken = bookings
-          .filter((b) => b.schedule_date === scheduleDate)
+          .filter((b) => b.schedule_date === form.schedule_date)
           .map((b) => b.schedule_time);
         const free = allSlots.filter((t) => !taken.includes(t));
         setAvailableTimes(free);
       })
       .catch(() => setAvailableTimes(allSlots));
-  }, [scheduleDate]);
+  }, [form.schedule_date]);
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    axios
-      .post(`${API_URL}/bookings`, {
-        booking_name: bookingName,
-        firstname,
-        surname,
-        schedule_date: scheduleDate,
-        schedule_time: scheduleTime,
-        cellphone,
-      })
-      .then(() => {
-        alert("✅ Booking created");
-        setBookingName("");
-        setFirstname("");
-        setSurname("");
-        setScheduleDate("");
-        setScheduleTime("");
-        setCellphone("");
-      })
-      .catch((err) => {
-        alert(err.response?.data?.error || "Error creating booking");
+    try {
+      await axios.post(`${API_URL}/bookings`, form);
+      alert("✅ Booking created successfully!");
+      setForm({
+        booking_name: "",
+        firstname: "",
+        surname: "",
+        schedule_date: "",
+        schedule_time: "",
+        cellphone: "",
       });
+      setAvailableTimes([]);
+    } catch (err) {
+      alert(err.response?.data?.error || err.message);
+    }
   };
 
   return (
-    <div style={{ maxWidth: 600, margin: "24px auto", fontFamily: "sans-serif" }}>
-      <h2>Create Booking</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          placeholder="Booking Name"
-          value={bookingName}
-          onChange={(e) => setBookingName(e.target.value)}
-          required
-        />
-        <br />
-        <input
-          placeholder="Firstname"
-          value={firstname}
-          onChange={(e) => setFirstname(e.target.value)}
-          required
-        />
-        <br />
-        <input
-          placeholder="Surname"
-          value={surname}
-          onChange={(e) => setSurname(e.target.value)}
-          required
-        />
-        <br />
-        <input
-          type="date"
-          value={scheduleDate}
-          onChange={(e) => setScheduleDate(e.target.value)}
-          required
-        />
-        {scheduleDate && (
-          <div style={{ marginTop: "8px" }}>
-            <strong>Available times:</strong>
-            <ul>
-              {availableTimes.length > 0 ? (
-                availableTimes.map((t) => <li key={t}>{t}</li>)
-              ) : (
-                <li>No slots left</li>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        background: "#f8f9fa",
+      }}
+    >
+      <div
+        style={{
+          background: "#fff",
+          padding: "40px",
+          borderRadius: "12px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          width: "100%",
+          maxWidth: "600px",
+        }}
+      >
+        <h1 style={{ textAlign: "center", marginBottom: "20px" }}>
+          Pre-Check-In Demo System
+        </h1>
+        <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
+          Create Booking
+        </h2>
+
+        <form onSubmit={handleSubmit}>
+          {[
+            { label: "Booking Name", name: "booking_name" },
+            { label: "Firstname", name: "firstname" },
+            { label: "Surname", name: "surname" },
+            { label: "Schedule Date", name: "schedule_date", type: "date" },
+            { label: "Schedule Time", name: "schedule_time", type: "time" },
+            { label: "Cellphone (e.g. 276XXXXXXXX)", name: "cellphone" },
+          ].map((field) => (
+            <div key={field.name} style={{ marginBottom: "15px" }}>
+              <label
+                style={{ display: "block", marginBottom: "6px", color: "#333" }}
+              >
+                {field.label}
+              </label>
+              <input
+                type={field.type || "text"}
+                name={field.name}
+                value={form[field.name]}
+                onChange={handleChange}
+                required
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc",
+                  fontSize: "14px",
+                }}
+              />
+              {/* Available times appear only under the Date field */}
+              {field.name === "schedule_date" && form.schedule_date && (
+                <div style={{ marginTop: "8px" }}>
+                  <strong>Available times:</strong>
+                  <ul style={{ marginTop: "6px" }}>
+                    {availableTimes.length > 0 ? (
+                      availableTimes.map((t) => <li key={t}>{t}</li>)
+                    ) : (
+                      <li>No slots left</li>
+                    )}
+                  </ul>
+                </div>
               )}
-            </ul>
-          </div>
-        )}
-        <br />
-        <input
-          type="time"
-          value={scheduleTime}
-          onChange={(e) => setScheduleTime(e.target.value)}
-          required
-        />
-        <br />
-        <input
-          placeholder="Cellphone e.g. 276XXXXXXXX"
-          value={cellphone}
-          onChange={(e) => setCellphone(e.target.value)}
-          required
-        />
-        <br />
-        <button type="submit">Create Booking</button>
-      </form>
+            </div>
+          ))}
+
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              padding: "12px",
+              background: "#007bff",
+              color: "#fff",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "16px",
+              cursor: "pointer",
+            }}
+          >
+            Create Booking
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
