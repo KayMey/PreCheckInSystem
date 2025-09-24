@@ -1,60 +1,37 @@
 import { Link } from "react-router-dom";
+import Layout from "../Layout";
 
-export default function HomePage() {
+export default function Home() {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        background: "#f8f9fa",
-      }}
-    >
-      <div
-        style={{
-          background: "#fff",
-          padding: "40px",
-          borderRadius: "12px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          width: "100%",
-          maxWidth: "600px",
-          textAlign: "center",
-        }}
-      >
-        <h1 style={{ marginBottom: "20px" }}>Pre-Check-In Demo System</h1>
-        <p style={{ marginBottom: "30px", fontSize: "16px", color: "#555" }}>
-          Welcome! Please choose an option below
-        </p>
-
+    <Layout title="Pre-Check-In Demo System">
+      <p style={{ marginBottom: "20px" }}>Welcome! Please choose an option below</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "15px", width: "100%", maxWidth: "300px" }}>
         <Link to="/employee/create">
           <button
             style={{
               width: "100%",
               padding: "12px",
+              fontSize: "16px",
               background: "#007bff",
               color: "#fff",
               border: "none",
               borderRadius: "6px",
-              fontSize: "16px",
               cursor: "pointer",
-              marginBottom: "12px",
             }}
           >
             Create Booking
           </button>
         </Link>
-
         <Link to="/employee/view">
           <button
             style={{
               width: "100%",
               padding: "12px",
+              fontSize: "16px",
               background: "#28a745",
               color: "#fff",
               border: "none",
               borderRadius: "6px",
-              fontSize: "16px",
               cursor: "pointer",
             }}
           >
@@ -62,6 +39,6 @@ export default function HomePage() {
           </button>
         </Link>
       </div>
-    </div>
+    </Layout>
   );
 }
