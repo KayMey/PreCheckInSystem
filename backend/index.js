@@ -1,3 +1,4 @@
+// backend/index.js
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -14,6 +15,9 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.warn("⚠️ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY / SUPABASE_KEY");
+}
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // Storage bucket for licence photos
@@ -36,14 +40,12 @@ const corsOptions = {
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: false,                  // no cookies used; keep false
+  credentials: false, // no cookies
   optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-// IMPORTANT: use the SAME options for preflight/OPTIONS
 app.options("*", cors(corsOptions));
-
 app.use(bodyParser.json());
 
 /* ---------- File uploads ---------- */
@@ -94,10 +96,9 @@ app.post("/bookings", async (req, res) => {
 
     if (error) throw error;
 
-    // Link for SMS
     const preCheckinLink = `${process.env.FRONTEND_URL}/precheckin/${data.id}`;
 
-    // Best-effort SMS; don't fail the booking if SMS fails
+    // Best-effort SMS; don't fail booking if SMS fails
     if (CLICKATELL_API_KEY && cellphone) {
       try {
         const smsResponse = await axios.get(CLICKATELL_URL, {
@@ -155,7 +156,7 @@ app.get("/bookings", async (req, res) => {
       return {
         ...r,
         dropoff_name: d ? `${d.first_name || ""} ${d.surname || ""}`.trim() : null,
-        license_photo_url: d?.license_url || null, // keep ViewBookings working
+        license_photo_url: d?.license_url || null, // for ViewBookings
       };
     });
 
@@ -177,134 +178,142 @@ app.get("/bookings/:id", async (req, res) => {
   }
 });
 
-/** Pre-check-in (confirm|update) + upload licence */
-app.put(
-  "/bookings/:id/precheckin",
-  upload.single("license"),
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const action = String(req.body.action || "").toLowerCase(); // 'confirm' | 'update'
-      if (!["confirm", "update"].includes(action)) {
-        return res
-          .status(400)
-          .json({ error: "Missing or invalid 'action' (confirm|update)" });
-      }
-
-      const booking = await getBookingById(id);
-
-      // Build dropoff payload
-      let payload;
-      if (action === "confirm") {
-        // Copy owner details, including owner ID number
-        payload = {
-          booking_id: booking.id,
-          first_name: booking.firstname,
-          surname: booking.surname,
-          phone: booking.cellphone,
-          id_number: booking.booking_id_number || null,
-          details_source: "confirmed",
-          details_confirmed: true,
-        };
-      } else {
-        // Use updated details from the form
-        payload = {
-          booking_id: booking.id,
-          first_name: (req.body.first_name || "").trim() || null,
-          surname: (req.body.surname || "").trim() || null,
-          phone: (req.body.phone || "").trim() || null,
-          id_number: (req.body.id_number || "").trim() || null,
-          details_source: "updated",
-          details_confirmed: true,
-        };
-      }
-
-      // Upsert one dropoff per booking (onConflict booking_id)
-      const { data: upserted, error: dErr } = await supabase
-        .from("dropoffs")
-        .upsert([payload], { onConflict: "booking_id" })
-        .select()
-        .single();
-      if (dErr) throw dErr;
-
-      // Upload licence image if provided
-      let licenseUrl = null;
-      if (req.file) {
-        const safeExt =
-          path.extname(req.file.originalname || "").toLowerCase() || ".jpg";
-        const filename = `ids/${booking.id}/${Date.now()}${safeExt}`;
-
-        const { error: uploadErr } = await supabase.storage
-          .from(LICENSES_BUCKET)
-          .upload(filename, req.file.buffer, {
-            contentType: req.file.mimetype || "image/jpeg",
-            upsert: true,
-          });
-        if (uploadErr) throw uploadErr;
-
-        const { data: pub } = supabase
-          .storage
-          .from(LICENSES_BUCKET)
-          .getPublicUrl(filename);
-        licenseUrl = pub?.publicUrl || null;
-
-        // Save on dropoffs
-        const { error: updDrop } = await supabase
-          .from("dropoffs")
-          .update({ license_url: licenseUrl })
-          .eq("id", upserted.id);
-        if (updDrop) throw updDrop;
-      }
-
-      // Mark booking as prechecked + keep legacy column for UI
-      const { error: updBooking } = await supabase
-        .from("bookings")
-        .update({
-          status: "prechecked",
-          license_photo_url: licenseUrl ?? booking.license_photo_url ?? null,
-        })
-        .eq("id", booking.id);
-      if (updBooking) throw updBooking;
-
-      // Return joined view (like list route)
-      const { data: fresh, error: freshErr } = await supabase
-        .from("bookings")
-        .select(
-          `
-          id,
-          booking_name,
-          firstname,
-          surname,
-          cellphone,
-          schedule_date,
-          schedule_time,
-          status,
-          dropoffs(first_name, surname, license_url)
-        `
-        )
-        .eq("id", booking.id)
-        .single();
-      if (freshErr) throw freshErr;
-
-      const d = Array.isArray(fresh.dropoffs) ? fresh.dropoffs[0] : null;
-      res.json({
-        ok: true,
-        booking: {
-          ...fresh,
-          dropoff_name: d ? `${d.first_name || ""} ${d.surname || ""}`.trim() : null,
-          license_photo_url: d?.license_url || null,
-        },
-      });
-    } catch (err) {
-      console.error("Error during pre-check-in:", err);
-      res.status(500).json({ error: err.message });
+/** Pre-check-in (confirm|update) + upload licence
+ * (select → insert or update)  ← avoids UNIQUE/onConflict requirement
+ */
+app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const action = String(req.body.action || "").toLowerCase(); // 'confirm' | 'update'
+    if (!["confirm", "update"].includes(action)) {
+      return res.status(400).json({ error: "Missing or invalid 'action' (confirm|update)" });
     }
+
+    // 1) Get booking
+    const booking = await getBookingById(id);
+
+    // 2) Build dropoff payload
+    let payload;
+    if (action === "confirm") {
+      payload = {
+        booking_id: booking.id,
+        first_name: booking.firstname,
+        surname: booking.surname,
+        phone: booking.cellphone,
+        id_number: booking.booking_id_number || null,
+        details_source: "confirmed",
+        details_confirmed: true,
+      };
+    } else {
+      payload = {
+        booking_id: booking.id,
+        first_name: (req.body.first_name || "").trim() || null,
+        surname: (req.body.surname || "").trim() || null,
+        phone: (req.body.phone || "").trim() || null,
+        id_number: (req.body.id_number || "").trim() || null,
+        details_source: "updated",
+        details_confirmed: true,
+      };
+    }
+
+    // 3) Find existing dropoff for this booking
+    const { data: existing, error: selErr } = await supabase
+      .from("dropoffs")
+      .select("id")
+      .eq("booking_id", booking.id)
+      .maybeSingle();
+    if (selErr) throw selErr;
+
+    let dropoffRow;
+    if (!existing) {
+      const { data: ins, error: insErr } = await supabase
+        .from("dropoffs")
+        .insert([payload])
+        .select("*")
+        .single();
+      if (insErr) throw insErr;
+      dropoffRow = ins;
+    } else {
+      const { data: upd, error: updErr } = await supabase
+        .from("dropoffs")
+        .update(payload)
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+      if (updErr) throw updErr;
+      dropoffRow = upd;
+    }
+
+    // 4) Upload licence image if present
+    let licenseUrl = null;
+    if (req.file) {
+      const safeExt = (path.extname(req.file.originalname || "").toLowerCase()) || ".jpg";
+      const filename = `ids/${booking.id}/${Date.now()}${safeExt}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from(LICENSES_BUCKET)
+        .upload(filename, req.file.buffer, {
+          contentType: req.file.mimetype || "image/jpeg",
+          upsert: true,
+        });
+      if (uploadErr) throw uploadErr;
+
+      const { data: pub } = supabase.storage.from(LICENSES_BUCKET).getPublicUrl(filename);
+      licenseUrl = pub?.publicUrl || null;
+
+      const { error: updDrop } = await supabase
+        .from("dropoffs")
+        .update({ license_url: licenseUrl })
+        .eq("id", dropoffRow.id);
+      if (updDrop) throw updDrop;
+    }
+
+    // 5) Mark booking as prechecked (keep legacy column for UI)
+    const { error: updBooking } = await supabase
+      .from("bookings")
+      .update({
+        status: "prechecked",
+        license_photo_url: licenseUrl ?? booking.license_photo_url ?? null,
+      })
+      .eq("id", booking.id);
+    if (updBooking) throw updBooking;
+
+    // 6) Return flattened view
+    const { data: fresh, error: freshErr } = await supabase
+      .from("bookings")
+      .select(`
+        id,
+        booking_name,
+        firstname,
+        surname,
+        cellphone,
+        schedule_date,
+        schedule_time,
+        status,
+        dropoffs(first_name, surname, license_url)
+      `)
+      .eq("id", booking.id)
+      .single();
+    if (freshErr) throw freshErr;
+
+    const d = Array.isArray(fresh.dropoffs) ? fresh.dropoffs[0] : null;
+    res.json({
+      ok: true,
+      booking: {
+        ...fresh,
+        dropoff_name: d ? `${d.first_name || ""} ${d.surname || ""}`.trim() : null,
+        license_photo_url: d?.license_url || null,
+      },
+    });
+  } catch (err) {
+    console.error("Error during pre-check-in:", err);
+    res.status(500).json({ error: err.message });
   }
-);
+});
 
 /** Health check */
 app.get("/", (_req, res) => res.send("Backend is running"));
 
-app.listen(PORT, () =>
-  console.log(`Backend running on http://localhost:${PORT}`)
-);
+app.listen(PORT, () => {
+  console.log(`Backend running on http://localhost:${PORT}`);
+});
