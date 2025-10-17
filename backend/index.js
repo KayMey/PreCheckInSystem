@@ -28,18 +28,22 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://nimble-kangaroo-5dfc99.netlify.app",
 ];
-app.use(
-  cors({
-    origin: (origin, cb) =>
-      !origin || allowedOrigins.includes(origin)
-        ? cb(null, true)
-        : cb(new Error("Not allowed by CORS")),
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
-app.options("*", cors());
+
+const corsOptions = {
+  origin(origin, cb) {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,                  // no cookies used; keep false
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+// IMPORTANT: use the SAME options for preflight/OPTIONS
+app.options("*", cors(corsOptions));
+
 app.use(bodyParser.json());
 
 /* ---------- File uploads ---------- */
