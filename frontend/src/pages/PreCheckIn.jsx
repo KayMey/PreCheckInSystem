@@ -11,10 +11,10 @@ export default function PreCheckin() {
   const [errMsg, setErrMsg] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
-  // confirm/update mode
-  const [mode, setMode] = useState("confirm"); // "confirm" | "update"
+  // confirm | update
+  const [mode, setMode] = useState("confirm");
 
-  // form state for update mode
+  // update fields
   const [firstName, setFirstName] = useState("");
   const [surname, setSurname] = useState("");
   const [phone, setPhone] = useState("");
@@ -30,11 +30,10 @@ export default function PreCheckin() {
       try {
         const res = await axios.get(`${BACKEND_URL}/bookings/${id}`);
         setBooking(res.data);
-        // pre-fill "update" form with booking values (user may edit)
         setFirstName(res.data.firstname || "");
         setSurname(res.data.surname || "");
         setPhone(res.data.cellphone || "");
-        setIdNumber(""); // user can type or OCR can fill later
+        setIdNumber(""); // optional: OCR can fill later
       } catch {
         setErrMsg("Invalid or expired link.");
       } finally {
@@ -43,7 +42,7 @@ export default function PreCheckin() {
     })();
   }, [id, BACKEND_URL]);
 
-  // ✅ resize/compress image and RETURN FULL DATA URL
+  // Return FULL data URL
   async function resizeImage(file, maxWidth = 1000, maxHeight = 1000) {
     return new Promise((resolve, reject) => {
       const img = document.createElement("img");
@@ -69,7 +68,7 @@ export default function PreCheckin() {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        resolve(dataUrl); // <-- keep header (data:image/jpeg;base64,...)
+        resolve(dataUrl); // keep header
       };
       reader.readAsDataURL(file);
     });
@@ -83,9 +82,8 @@ export default function PreCheckin() {
     setVerifyState("checking");
     setVerifyMsg("Verifying…");
     try {
-      // send BOTH formats for compatibility
       const imageDataUrl = await resizeImage(file);
-      const imageBase64 = imageDataUrl.split(",")[1]; // raw base64
+      const imageBase64 = imageDataUrl.split(",")[1];
 
       const res = await fetch("/.netlify/functions/verify-license", {
         method: "POST",
@@ -97,12 +95,12 @@ export default function PreCheckin() {
       if (res.ok && data.ok) {
         setVerifyState("ok");
         setVerifyMsg("✓ Licence verified");
-        // If your function extracts an ID number, you can do:
         // if (data.idNumber) setIdNumber(data.idNumber);
       } else {
         setVerifyState("fail");
         setVerifyMsg(
-          "AWS error: " + (data.error || "Could not verify. Please upload a clearer photo.")
+          "AWS error: " +
+            (data.error || "Could not verify. Please upload a clearer photo.")
         );
         setFile(null);
         const input = document.getElementById("lic-input");
@@ -130,7 +128,6 @@ export default function PreCheckin() {
       formData.append("phone", phone);
       formData.append("id_number", idNumber);
     }
-
     if (file) formData.append("license", file);
 
     try {
@@ -186,10 +183,18 @@ export default function PreCheckin() {
                 color: "#000",
               }}
             >
-              <div><strong>Booking:</strong> {booking.booking_name}</div>
-              <div><strong>Customer:</strong> {booking.firstname} {booking.surname}</div>
-              <div><strong>Date:</strong> {booking.schedule_date}</div>
-              <div><strong>Time:</strong> {booking.schedule_time}</div>
+              <div>
+                <strong>Booking:</strong> {booking.booking_name}
+              </div>
+              <div>
+                <strong>Customer:</strong> {booking.firstname} {booking.surname}
+              </div>
+              <div>
+                <strong>Date:</strong> {booking.schedule_date}
+              </div>
+              <div>
+                <strong>Time:</strong> {booking.schedule_time}
+              </div>
             </div>
 
             <div style={{ marginBottom: 12, color: "#000" }}>
@@ -253,7 +258,6 @@ export default function PreCheckin() {
                 id="lic-input"
                 type="file"
                 accept="image/*"
-                capture="environment"        // hint rear camera; still allows library
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 required
                 style={{ display: "block", marginTop: 6 }}
