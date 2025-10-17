@@ -86,7 +86,8 @@ export default function ViewBookings() {
                   <th>Booking</th>
                   <th>Owner name</th>
                   {tab === "prechecked" && <th>Drop-off name</th>}
-                  <th>Cell</th>
+                  <th>Owner cell</th>
+                  {tab === "prechecked" && <th>Drop-off cell</th>}
                   <th>Status</th>
                   {tab === "prechecked" && <th>License</th>}
                 </tr>
@@ -100,7 +101,6 @@ export default function ViewBookings() {
                       r.license_photo_url ??
                       null;
 
-                    // Backend now sends dropoff_name; fall back to composing it
                     const dropoffName =
                       r.dropoff_name ??
                       (r.dropoffs?.[0]
@@ -109,27 +109,25 @@ export default function ViewBookings() {
                           }`.trim()
                         : null);
 
+                    const dropoffCell =
+                      r.dropoff_phone ??
+                      r.dropoffs?.[0]?.phone ??
+                      null;
+
                     return (
                       <tr key={r.id}>
                         <td>{r.schedule_date}</td>
                         <td>{r.schedule_time}</td>
                         <td>{r.booking_name}</td>
-                        <td>
-                          {r.firstname} {r.surname}
-                        </td>
-                        {tab === "prechecked" && (
-                          <td>{dropoffName || "-"}</td>
-                        )}
+                        <td>{r.firstname} {r.surname}</td>
+                        {tab === "prechecked" && <td>{dropoffName || "-"}</td>}
                         <td>{r.cellphone}</td>
+                        {tab === "prechecked" && <td>{dropoffCell || "-"}</td>}
                         <td>{r.status}</td>
                         {tab === "prechecked" && (
                           <td>
                             {licenceUrl ? (
-                              <a
-                                href={licenceUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
+                              <a href={licenceUrl} target="_blank" rel="noreferrer">
                                 View photo
                               </a>
                             ) : (
@@ -142,7 +140,7 @@ export default function ViewBookings() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={tab === "prechecked" ? 8 : 6}>
+                    <td colSpan={tab === "prechecked" ? 9 : 7}>
                       No bookings
                     </td>
                   </tr>

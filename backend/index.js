@@ -87,7 +87,7 @@ app.post("/bookings", async (req, res) => {
           schedule_date,
           schedule_time,
           cellphone,
-          booking_id_number,
+          booking_id_number, // NEW
           status: "not-prechecked",
         },
       ])
@@ -98,6 +98,7 @@ app.post("/bookings", async (req, res) => {
 
     const preCheckinLink = `${process.env.FRONTEND_URL}/precheckin/${data.id}`;
 
+    // Best-effort SMS; don't fail booking if SMS fails
     if (CLICKATELL_API_KEY && cellphone) {
       try {
         const smsResponse = await axios.get(CLICKATELL_URL, {
@@ -121,7 +122,7 @@ app.post("/bookings", async (req, res) => {
   }
 });
 
-/** List bookings (+flatten dropoff_name & license_photo_url from dropoffs) */
+/** List bookings (+flatten dropoff_name, dropoff_phone & license_photo_url) */
 app.get("/bookings", async (req, res) => {
   try {
     const { status, date } = req.query;
@@ -137,7 +138,7 @@ app.get("/bookings", async (req, res) => {
         schedule_date,
         schedule_time,
         status,
-        dropoffs(first_name, surname, license_url)
+        dropoffs(first_name, surname, phone, license_url)
       `)
       .order("schedule_date", { ascending: true })
       .order("schedule_time", { ascending: true });
@@ -153,7 +154,8 @@ app.get("/bookings", async (req, res) => {
       return {
         ...r,
         dropoff_name: d ? `${d.first_name || ""} ${d.surname || ""}`.trim() : null,
-        license_photo_url: d?.license_url || null, // for UI convenience only
+        dropoff_phone: d?.phone ?? null,           // 👈 expose drop-off phone
+        license_photo_url: d?.license_url || null, // keep UI simple
       };
     });
 
@@ -175,7 +177,7 @@ app.get("/bookings/:id", async (req, res) => {
   }
 });
 
-/** Pre-check-in (confirm|update) + upload licence (no write to bookings.license_photo_url) */
+/** Pre-check-in (confirm|update) + upload licence (no write to removed column) */
 app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) => {
   try {
     const { id } = req.params;
@@ -263,14 +265,14 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
       if (updDrop) throw updDrop;
     }
 
-    // 5) Mark booking as prechecked (no write to deleted column)
+    // 5) Mark booking as prechecked
     const { error: updBooking } = await supabase
       .from("bookings")
       .update({ status: "prechecked" })
       .eq("id", booking.id);
     if (updBooking) throw updBooking;
 
-    // 6) Return flattened view
+    // 6) Return flattened view (with phone included)
     const { data: fresh, error: freshErr } = await supabase
       .from("bookings")
       .select(`
@@ -282,7 +284,7 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
         schedule_date,
         schedule_time,
         status,
-        dropoffs(first_name, surname, license_url)
+        dropoffs(first_name, surname, phone, license_url)
       `)
       .eq("id", booking.id)
       .single();
@@ -294,6 +296,7 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
       booking: {
         ...fresh,
         dropoff_name: d ? `${d.first_name || ""} ${d.surname || ""}`.trim() : null,
+        dropoff_phone: d?.phone ?? null,
         license_photo_url: d?.license_url || null,
       },
     });
