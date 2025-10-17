@@ -93,8 +93,6 @@ export default function PreCheckin() {
       if (res.ok && data.ok) {
         setVerifyState("ok");
         setVerifyMsg("✓ Licence verified");
-        // If your function extracts ID, you can set it here:
-        // if (data.idNumber) setIdNumber(data.idNumber);
       } else {
         setVerifyState("fail");
         setVerifyMsg(
@@ -118,7 +116,6 @@ export default function PreCheckin() {
     }
 
     const formData = new FormData();
-    // tell backend how to behave with 2-table model
     formData.append("action", mode === "confirm" ? "confirm" : "update");
 
     if (mode === "update") {
@@ -131,7 +128,6 @@ export default function PreCheckin() {
     if (file) formData.append("license", file);
 
     try {
-      // NOTE: backend route unchanged, but it will now write to DROP OFFS
       await axios.put(`${BACKEND_URL}/bookings/${id}/precheckin`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -148,56 +144,156 @@ export default function PreCheckin() {
   const canSubmit = verifyState === "ok";
 
   return (
-    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#f8f9fa" }}>
-      <div style={{ background:"#fff", padding:30, borderRadius:10, boxShadow:"0 4px 12px rgba(0,0,0,0.1)", width:"100%", maxWidth:520 }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        background: "#f8f9fa",
+      }}
+    >
+      <div
+        style={{
+          background: "#fff",
+          color: "#000", // ✅ Ensure all text is black
+          padding: 30,
+          borderRadius: 10,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          width: "100%",
+          maxWidth: 520,
+        }}
+      >
         {!submitted ? (
           <>
-            <h2 style={{ textAlign:"center" }}>Pre-Check-In</h2>
-            <p style={{ textAlign:"center", marginBottom:20 }}>
+            <h2 style={{ textAlign: "center", color: "#000" }}>Pre-Check-In</h2>
+            <p style={{ textAlign: "center", marginBottom: 20, color: "#000" }}>
               Confirm or update the details of the person dropping off the vehicle.
             </p>
 
-            <div style={{ background:"#f6f6f6", padding:12, borderRadius:8, marginBottom:16 }}>
+            <div
+              style={{
+                background: "#f6f6f6",
+                padding: 12,
+                borderRadius: 8,
+                marginBottom: 16,
+                color: "#000",
+              }}
+            >
               <div><strong>Booking:</strong> {booking.booking_name}</div>
               <div><strong>Customer:</strong> {booking.firstname} {booking.surname}</div>
               <div><strong>Date:</strong> {booking.schedule_date}</div>
               <div><strong>Time:</strong> {booking.schedule_time}</div>
             </div>
 
-            <div style={{ marginBottom:12 }}>
-              <label><input type="radio" name="mode" checked={mode==="confirm"} onChange={()=>setMode("confirm")} /> Use booking details</label>
-              <label style={{ marginLeft:16 }}><input type="radio" name="mode" checked={mode==="update"} onChange={()=>setMode("update")} /> Update details</label>
+            <div style={{ marginBottom: 12, color: "#000" }}>
+              <label>
+                <input
+                  type="radio"
+                  name="mode"
+                  checked={mode === "confirm"}
+                  onChange={() => setMode("confirm")}
+                />{" "}
+                Use booking details
+              </label>
+              <label style={{ marginLeft: 16 }}>
+                <input
+                  type="radio"
+                  name="mode"
+                  checked={mode === "update"}
+                  onChange={() => setMode("update")}
+                />{" "}
+                Update details
+              </label>
             </div>
 
             {mode === "update" && (
-              <div style={{ marginBottom:12 }}>
+              <div style={{ marginBottom: 12, color: "#000" }}>
                 <label>First Name</label>
-                <input value={firstName} onChange={(e)=>setFirstName(e.target.value)} required style={{ width:"100%", padding:8, marginBottom:8 }} />
+                <input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  style={{ width: "100%", padding: 8, marginBottom: 8 }}
+                />
                 <label>Surname</label>
-                <input value={surname} onChange={(e)=>setSurname(e.target.value)} required style={{ width:"100%", padding:8, marginBottom:8 }} />
+                <input
+                  value={surname}
+                  onChange={(e) => setSurname(e.target.value)}
+                  required
+                  style={{ width: "100%", padding: 8, marginBottom: 8 }}
+                />
                 <label>Cell Phone</label>
-                <input value={phone} onChange={(e)=>setPhone(e.target.value)} placeholder="e.g. 276XXXXXXXX" required style={{ width:"100%", padding:8, marginBottom:8 }} />
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. 276XXXXXXXX"
+                  required
+                  style={{ width: "100%", padding: 8, marginBottom: 8 }}
+                />
                 <label>ID Number</label>
-                <input value={idNumber} onChange={(e)=>setIdNumber(e.target.value)} required style={{ width:"100%", padding:8, marginBottom:8 }} />
+                <input
+                  value={idNumber}
+                  onChange={(e) => setIdNumber(e.target.value)}
+                  required
+                  style={{ width: "100%", padding: 8, marginBottom: 8 }}
+                />
               </div>
             )}
 
-            <div style={{ marginBottom:10 }}>
+            <div style={{ marginBottom: 10, color: "#000" }}>
               <label>Upload Driver’s Licence (front)</label>
-              <input id="lic-input" type="file" accept="image/*" onChange={(e)=>setFile(e.target.files?.[0] || null)} required style={{ display:"block", marginTop:6 }} />
-              <button type="button" onClick={verifyLicence} disabled={!file || verifyState==="checking"} style={{ marginTop:10, padding:"8px 14px", background:"#007bff", color:"#fff", border:"none", borderRadius:5 }}>
+              <input
+                id="lic-input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                required
+                style={{ display: "block", marginTop: 6 }}
+              />
+              <button
+                type="button"
+                onClick={verifyLicence}
+                disabled={!file || verifyState === "checking"}
+                style={{
+                  marginTop: 10,
+                  padding: "8px 14px",
+                  background: "#007bff",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 5,
+                }}
+              >
                 {verifyState === "checking" ? "Verifying…" : "Verify Licence"}
               </button>
-              {verifyState === "ok" && <p style={{ color:"green", fontWeight:600 }}>{verifyMsg}</p>}
-              {verifyState === "fail" && <p style={{ color:"crimson" }}>{verifyMsg}</p>}
+              {verifyState === "ok" && (
+                <p style={{ color: "green", fontWeight: 600 }}>{verifyMsg}</p>
+              )}
+              {verifyState === "fail" && (
+                <p style={{ color: "crimson" }}>{verifyMsg}</p>
+              )}
             </div>
 
-            <button type="button" onClick={handleSubmit} disabled={!canSubmit} style={{ width:"100%", padding:10, background:canSubmit ? "#007bff" : "#ccc", color:"#fff", border:"none", borderRadius:5 }}>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              style={{
+                width: "100%",
+                padding: 10,
+                background: canSubmit ? "#007bff" : "#ccc",
+                color: "#fff",
+                border: "none",
+                borderRadius: 5,
+              }}
+            >
               Submit Pre-Check-In
             </button>
           </>
         ) : (
-          <h3 style={{ color:"green", textAlign:"center" }}>Thank you! Your pre-check-in has been submitted.</h3>
+          <h3 style={{ color: "green", textAlign: "center" }}>
+            Thank you! Your pre-check-in has been submitted.
+          </h3>
         )}
       </div>
     </div>
