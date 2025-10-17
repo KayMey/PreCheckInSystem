@@ -32,24 +32,25 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://nimble-kangaroo-5dfc99.netlify.app",
 ];
-
 const corsOptions = {
   origin(origin, cb) {
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
     return cb(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept", "Origin"],
   credentials: false, // no cookies
   optionsSuccessStatus: 204,
 };
-
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(bodyParser.json());
 
 /* ---------- File uploads ---------- */
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB guard
+});
 
 /* ---------- Helpers ---------- */
 async function getBookingById(id) {
@@ -60,6 +61,21 @@ async function getBookingById(id) {
     .single();
   if (error || !data) throw new Error("Booking not found");
   return data;
+}
+
+/* Ensure bucket exists (nice to have) */
+async function ensureBucket(name) {
+  try {
+    const { data: list } = await supabase.storage.listBuckets();
+    if (!Array.isArray(list) || !list.find((b) => b.name === name)) {
+      // create public bucket
+      await supabase.storage.createBucket(name, { public: true });
+      console.log(`Created storage bucket: ${name}`);
+    }
+  } catch (e) {
+    // non-fatal: continue; upload will still throw if it truly doesn't exist
+    console.warn("Bucket check/create skipped:", e.message);
+  }
 }
 
 /* ======================== ROUTES ======================= */
@@ -87,7 +103,7 @@ app.post("/bookings", async (req, res) => {
           schedule_date,
           schedule_time,
           cellphone,
-          booking_id_number, // NEW
+          booking_id_number,
           status: "not-prechecked",
         },
       ])
@@ -118,7 +134,7 @@ app.post("/bookings", async (req, res) => {
     res.status(201).json({ booking: data });
   } catch (err) {
     console.error("Error creating booking:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || "Create booking failed" });
   }
 });
 
@@ -156,14 +172,14 @@ app.get("/bookings", async (req, res) => {
       return {
         ...r,
         dropoff_name: d ? `${d.first_name || ""} ${d.surname || ""}`.trim() : null,
-        license_photo_url: d?.license_url || null, // for ViewBookings
+        license_photo_url: d?.license_url || null,
       };
     });
 
     res.json(rows);
   } catch (err) {
     console.error("Error fetching bookings:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || "Fetch bookings failed" });
   }
 });
 
@@ -178,16 +194,17 @@ app.get("/bookings/:id", async (req, res) => {
   }
 });
 
-/** Pre-check-in (confirm|update) + upload licence
- * (select → insert or update)  ← avoids UNIQUE/onConflict requirement
- */
+/** Pre-check-in (confirm|update) + upload licence */
 app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) => {
   try {
     const { id } = req.params;
-    const action = String(req.body.action || "").toLowerCase(); // 'confirm' | 'update'
+    const action = String(req.body.action || "").toLowerCase();
     if (!["confirm", "update"].includes(action)) {
       return res.status(400).json({ error: "Missing or invalid 'action' (confirm|update)" });
     }
+
+    // Diagnostics
+    console.log("Precheckin -> booking id:", id, "action:", action, "file?:", !!req.file);
 
     // 1) Get booking
     const booking = await getBookingById(id);
@@ -247,7 +264,9 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
     // 4) Upload licence image if present
     let licenseUrl = null;
     if (req.file) {
-      const safeExt = (path.extname(req.file.originalname || "").toLowerCase()) || ".jpg";
+      await ensureBucket(LICENSES_BUCKET);
+
+      const safeExt = path.extname(req.file.originalname || "").toLowerCase() || ".jpg";
       const filename = `ids/${booking.id}/${Date.now()}${safeExt}`;
 
       const { error: uploadErr } = await supabase.storage
@@ -256,7 +275,10 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
           contentType: req.file.mimetype || "image/jpeg",
           upsert: true,
         });
-      if (uploadErr) throw uploadErr;
+      if (uploadErr) {
+        console.error("Storage upload error:", uploadErr);
+        return res.status(500).json({ error: `Storage upload failed: ${uploadErr.message || uploadErr.error || "unknown"}` });
+      }
 
       const { data: pub } = supabase.storage.from(LICENSES_BUCKET).getPublicUrl(filename);
       licenseUrl = pub?.publicUrl || null;
@@ -307,7 +329,7 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
     });
   } catch (err) {
     console.error("Error during pre-check-in:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || "Pre-check-in failed" });
   }
 });
 

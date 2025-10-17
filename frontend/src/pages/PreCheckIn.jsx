@@ -34,7 +34,8 @@ export default function PreCheckin() {
         setSurname(res.data.surname || "");
         setPhone(res.data.cellphone || "");
         setIdNumber(""); // optional: OCR can fill later
-      } catch {
+      } catch (e) {
+        console.error("Load booking failed:", e?.response?.data || e.message);
         setErrMsg("Invalid or expired link.");
       } finally {
         setLoading(false);
@@ -43,7 +44,7 @@ export default function PreCheckin() {
   }, [id, BACKEND_URL]);
 
   // Return FULL data URL
-  async function resizeImage(file, maxWidth = 1000, maxHeight = 1000) {
+  async function resizeImage(inFile, maxWidth = 1000, maxHeight = 1000) {
     return new Promise((resolve, reject) => {
       const img = document.createElement("img");
       const reader = new FileReader();
@@ -70,7 +71,7 @@ export default function PreCheckin() {
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
         resolve(dataUrl); // keep header
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(inFile);
     });
   }
 
@@ -91,7 +92,7 @@ export default function PreCheckin() {
         body: JSON.stringify({ imageDataUrl, imageBase64 }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data.ok) {
         setVerifyState("ok");
         setVerifyMsg("✓ Licence verified");
@@ -100,7 +101,7 @@ export default function PreCheckin() {
         setVerifyState("fail");
         setVerifyMsg(
           "AWS error: " +
-            (data.error || "Could not verify. Please upload a clearer photo.")
+            (data?.error || "Could not verify. Please upload a clearer photo.")
         );
         setFile(null);
         const input = document.getElementById("lic-input");
@@ -114,6 +115,8 @@ export default function PreCheckin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrMsg(null);
+
     if (verifyState !== "ok") {
       setErrMsg("Please verify the driver’s licence before submitting.");
       return;
@@ -131,18 +134,26 @@ export default function PreCheckin() {
     if (file) formData.append("license", file);
 
     try {
-      await axios.put(`${BACKEND_URL}/bookings/${id}/precheckin`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await axios.put(
+        `${BACKEND_URL}/bookings/${id}/precheckin`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      console.log("Pre-check-in success:", res.status, res.data);
       setSubmitted(true);
     } catch (err) {
-      console.error("Pre-check-in error:", err.response?.data || err.message);
-      setErrMsg("Failed to complete pre-check-in. Try again.");
+      const apiErr =
+        err?.response?.data?.error ||
+        err?.message ||
+        "Unknown server error";
+      console.error("Pre-check-in error:", err?.response || err);
+      setErrMsg(`Failed to complete pre-check-in: ${apiErr}`);
     }
   };
 
   if (loading) return <p style={{ textAlign: "center" }}>Loading booking...</p>;
-  if (errMsg) return <p style={{ color: "red", textAlign: "center" }}>{errMsg}</p>;
+  if (errMsg && !submitted)
+    return <p style={{ color: "red", textAlign: "center" }}>{errMsg}</p>;
 
   const canSubmit = verifyState === "ok";
 
@@ -300,6 +311,12 @@ export default function PreCheckin() {
             >
               Submit Pre-Check-In
             </button>
+
+            {errMsg && (
+              <p style={{ color: "red", marginTop: 12, textAlign: "center" }}>
+                {errMsg}
+              </p>
+            )}
           </>
         ) : (
           <h3 style={{ color: "green", textAlign: "center" }}>
