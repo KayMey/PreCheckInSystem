@@ -43,7 +43,7 @@ export default function PreCheckin() {
     })();
   }, [id, BACKEND_URL]);
 
-  // resize/compress image (as you had)
+  // ✅ resize/compress image and RETURN FULL DATA URL
   async function resizeImage(file, maxWidth = 1000, maxHeight = 1000) {
     return new Promise((resolve, reject) => {
       const img = document.createElement("img");
@@ -69,7 +69,7 @@ export default function PreCheckin() {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        resolve(dataUrl.replace(/^data:image\/\w+;base64,/, ""));
+        resolve(dataUrl); // <-- keep header (data:image/jpeg;base64,...)
       };
       reader.readAsDataURL(file);
     });
@@ -83,16 +83,22 @@ export default function PreCheckin() {
     setVerifyState("checking");
     setVerifyMsg("Verifying…");
     try {
-      const imageBase64 = await resizeImage(file);
+      // send BOTH formats for compatibility
+      const imageDataUrl = await resizeImage(file);
+      const imageBase64 = imageDataUrl.split(",")[1]; // raw base64
+
       const res = await fetch("/.netlify/functions/verify-license", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64 }),
+        body: JSON.stringify({ imageDataUrl, imageBase64 }),
       });
+
       const data = await res.json();
       if (res.ok && data.ok) {
         setVerifyState("ok");
         setVerifyMsg("✓ Licence verified");
+        // If your function extracts an ID number, you can do:
+        // if (data.idNumber) setIdNumber(data.idNumber);
       } else {
         setVerifyState("fail");
         setVerifyMsg(
@@ -156,7 +162,7 @@ export default function PreCheckin() {
       <div
         style={{
           background: "#fff",
-          color: "#000", // ✅ Ensure all text is black
+          color: "#000",
           padding: 30,
           borderRadius: 10,
           boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
@@ -247,6 +253,7 @@ export default function PreCheckin() {
                 id="lic-input"
                 type="file"
                 accept="image/*"
+                capture="environment"        // hint rear camera; still allows library
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 required
                 style={{ display: "block", marginTop: 6 }}
