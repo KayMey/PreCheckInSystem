@@ -4,57 +4,55 @@ import axios from "axios";
 
 export default function PreCheckin() {
   const { id } = useParams();
+  const BACKEND_URL = import.meta.env.VITE_API_URL;
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [errMsg, setErrMsg] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
-  // form state
-  const [dropoffFirstname, setDropoffFirstname] = useState("");
-  const [dropoffSurname, setDropoffSurname] = useState("");
-  const [dropoffPhone, setDropoffPhone] = useState("");
-  const [dropoffIdNumber, setDropoffIdNumber] = useState("");
-  const [file, setFile] = useState(null);
+  // confirm/update mode
+  const [mode, setMode] = useState("confirm"); // "confirm" | "update"
 
-  // verify state
+  // form state for update mode
+  const [firstName, setFirstName] = useState("");
+  const [surname, setSurname] = useState("");
+  const [phone, setPhone] = useState("");
+  const [idNumber, setIdNumber] = useState("");
+
+  // file + verify
+  const [file, setFile] = useState(null);
   const [verifyState, setVerifyState] = useState("idle"); // idle | checking | ok | fail
   const [verifyMsg, setVerifyMsg] = useState("");
 
-  const BACKEND_URL = import.meta.env.VITE_API_URL;
-
-  // Fetch booking details
   useEffect(() => {
-    const fetchBooking = async () => {
+    (async () => {
       try {
         const res = await axios.get(`${BACKEND_URL}/bookings/${id}`);
         setBooking(res.data);
-      } catch (err) {
-        setError("Invalid or expired link.");
+        // pre-fill "update" form with booking values (user may edit)
+        setFirstName(res.data.firstname || "");
+        setSurname(res.data.surname || "");
+        setPhone(res.data.cellphone || "");
+        setIdNumber(""); // user can type or OCR can fill later
+      } catch {
+        setErrMsg("Invalid or expired link.");
       } finally {
         setLoading(false);
       }
-    };
-    fetchBooking();
+    })();
   }, [id, BACKEND_URL]);
 
-  // ✅ Resize + compress image before sending
+  // resize/compress image (as you had)
   async function resizeImage(file, maxWidth = 1000, maxHeight = 1000) {
     return new Promise((resolve, reject) => {
       const img = document.createElement("img");
       const reader = new FileReader();
-
-      reader.onload = (e) => {
-        img.src = e.target.result;
-      };
-
+      reader.onload = (e) => (img.src = e.target.result);
       img.onerror = reject;
-
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
-
+        let { width, height } = img;
         if (width > height) {
           if (width > maxWidth) {
             height = Math.round((height *= maxWidth / width));
@@ -66,22 +64,17 @@ export default function PreCheckin() {
             height = maxHeight;
           }
         }
-
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
-
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
-        resolve(base64);
+        resolve(dataUrl.replace(/^data:image\/\w+;base64,/, ""));
       };
-
       reader.readAsDataURL(file);
     });
   }
 
-  // ✅ Verify licence
   const verifyLicence = async () => {
     if (!file) {
       setVerifyMsg("Please choose a licence photo first.");
@@ -89,21 +82,19 @@ export default function PreCheckin() {
     }
     setVerifyState("checking");
     setVerifyMsg("Verifying…");
-
     try {
       const imageBase64 = await resizeImage(file);
-
       const res = await fetch("/.netlify/functions/verify-license", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64 }),
       });
-
       const data = await res.json();
-
       if (res.ok && data.ok) {
         setVerifyState("ok");
         setVerifyMsg("✓ Licence verified");
+        // If your function extracts ID, you can set it here:
+        // if (data.idNumber) setIdNumber(data.idNumber);
       } else {
         setVerifyState("fail");
         setVerifyMsg(
@@ -119,187 +110,94 @@ export default function PreCheckin() {
     }
   };
 
-  // ✅ Submit only if licence verified
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (verifyState !== "ok") {
-      setError("Please verify the driver’s licence before submitting.");
+      setErrMsg("Please verify the driver’s licence before submitting.");
       return;
     }
 
     const formData = new FormData();
-    formData.append("dropoff_firstname", dropoffFirstname);
-    formData.append("dropoff_surname", dropoffSurname);
-    formData.append("dropoff_phone", dropoffPhone);
-    formData.append("dropoff_id_number", dropoffIdNumber);
-    formData.append("license", file);
+    // tell backend how to behave with 2-table model
+    formData.append("action", mode === "confirm" ? "confirm" : "update");
+
+    if (mode === "update") {
+      formData.append("first_name", firstName);
+      formData.append("surname", surname);
+      formData.append("phone", phone);
+      formData.append("id_number", idNumber);
+    }
+
+    if (file) formData.append("license", file);
 
     try {
+      // NOTE: backend route unchanged, but it will now write to DROP OFFS
       await axios.put(`${BACKEND_URL}/bookings/${id}/precheckin`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setSubmitted(true);
     } catch (err) {
       console.error("Pre-check-in error:", err.response?.data || err.message);
-      setError("Failed to complete pre-check-in. Try again.");
+      setErrMsg("Failed to complete pre-check-in. Try again.");
     }
   };
 
   if (loading) return <p style={{ textAlign: "center" }}>Loading booking...</p>;
-  if (error) return <p style={{ color: "red", textAlign: "center" }}>{error}</p>;
+  if (errMsg) return <p style={{ color: "red", textAlign: "center" }}>{errMsg}</p>;
 
   const canSubmit = verifyState === "ok";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        background: "#f8f9fa",
-      }}
-    >
-      <div
-        style={{
-          background: "#fff",
-          padding: "30px",
-          borderRadius: "10px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          width: "100%",
-          maxWidth: "500px",
-        }}
-      >
+    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", minHeight:"100vh", background:"#f8f9fa" }}>
+      <div style={{ background:"#fff", padding:30, borderRadius:10, boxShadow:"0 4px 12px rgba(0,0,0,0.1)", width:"100%", maxWidth:520 }}>
         {!submitted ? (
           <>
-            <h2 style={{ textAlign: "center", color: "#000" }}>Pre-Check-In</h2>
-            <p
-              style={{
-                textAlign: "center",
-                marginBottom: "20px",
-                color: "#000",
-              }}
-            >
-              Please fill in the information below for the person dropping off the vehicle
+            <h2 style={{ textAlign:"center" }}>Pre-Check-In</h2>
+            <p style={{ textAlign:"center", marginBottom:20 }}>
+              Confirm or update the details of the person dropping off the vehicle.
             </p>
 
-            <p>
-              <strong>Booking:</strong> {booking.booking_name}
-            </p>
-            <p>
-              <strong>Customer:</strong> {booking.firstname} {booking.surname}
-            </p>
-            <p>
-              <strong>Date:</strong> {booking.schedule_date}
-            </p>
-            <p>
-              <strong>Time:</strong> {booking.schedule_time}
-            </p>
+            <div style={{ background:"#f6f6f6", padding:12, borderRadius:8, marginBottom:16 }}>
+              <div><strong>Booking:</strong> {booking.booking_name}</div>
+              <div><strong>Customer:</strong> {booking.firstname} {booking.surname}</div>
+              <div><strong>Date:</strong> {booking.schedule_date}</div>
+              <div><strong>Time:</strong> {booking.schedule_time}</div>
+            </div>
 
-            <form onSubmit={handleSubmit} style={{ marginTop: "20px" }}>
-              <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", color: "#000" }}>
-                First Name:
-              </label>
-              <input
-                type="text"
-                value={dropoffFirstname}
-                onChange={(e) => setDropoffFirstname(e.target.value)}
-                required
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-              />
+            <div style={{ marginBottom:12 }}>
+              <label><input type="radio" name="mode" checked={mode==="confirm"} onChange={()=>setMode("confirm")} /> Use booking details</label>
+              <label style={{ marginLeft:16 }}><input type="radio" name="mode" checked={mode==="update"} onChange={()=>setMode("update")} /> Update details</label>
+            </div>
 
-              <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", color: "#000" }}>
-                Last Name:
-              </label>
-              <input
-                type="text"
-                value={dropoffSurname}
-                onChange={(e) => setDropoffSurname(e.target.value)}
-                required
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-              />
+            {mode === "update" && (
+              <div style={{ marginBottom:12 }}>
+                <label>First Name</label>
+                <input value={firstName} onChange={(e)=>setFirstName(e.target.value)} required style={{ width:"100%", padding:8, marginBottom:8 }} />
+                <label>Surname</label>
+                <input value={surname} onChange={(e)=>setSurname(e.target.value)} required style={{ width:"100%", padding:8, marginBottom:8 }} />
+                <label>Cell Phone</label>
+                <input value={phone} onChange={(e)=>setPhone(e.target.value)} placeholder="e.g. 276XXXXXXXX" required style={{ width:"100%", padding:8, marginBottom:8 }} />
+                <label>ID Number</label>
+                <input value={idNumber} onChange={(e)=>setIdNumber(e.target.value)} required style={{ width:"100%", padding:8, marginBottom:8 }} />
+              </div>
+            )}
 
-              <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", color: "#000" }}>
-                Cell Phone:
-              </label>
-              <input
-                type="text"
-                value={dropoffPhone}
-                onChange={(e) => setDropoffPhone(e.target.value)}
-                placeholder="e.g. 276XXXXXXXX"
-                required
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-              />
-
-              <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", color: "#000" }}>
-                ID Number:
-              </label>
-              <input
-                type="text"
-                value={dropoffIdNumber}
-                onChange={(e) => setDropoffIdNumber(e.target.value)}
-                required
-                style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
-              />
-
-              <label style={{ display: "block", marginBottom: "5px", fontWeight: "500", color: "#000" }}>
-                Upload Driver’s Licence (front):
-              </label>
-              <input
-                id="lic-input"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setFile(e.target.files[0])}
-                required
-                style={{ display: "block", marginBottom: "10px" }}
-              />
-
-              <button
-                type="button"
-                onClick={verifyLicence}
-                disabled={!file || verifyState === "checking"}
-                style={{
-                  padding: "8px 14px",
-                  background: "#007bff",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "5px",
-                  cursor: !file || verifyState === "checking" ? "not-allowed" : "pointer",
-                  marginBottom: "10px",
-                }}
-              >
+            <div style={{ marginBottom:10 }}>
+              <label>Upload Driver’s Licence (front)</label>
+              <input id="lic-input" type="file" accept="image/*" onChange={(e)=>setFile(e.target.files?.[0] || null)} required style={{ display:"block", marginTop:6 }} />
+              <button type="button" onClick={verifyLicence} disabled={!file || verifyState==="checking"} style={{ marginTop:10, padding:"8px 14px", background:"#007bff", color:"#fff", border:"none", borderRadius:5 }}>
                 {verifyState === "checking" ? "Verifying…" : "Verify Licence"}
               </button>
-              {verifyState === "ok" && (
-                <p style={{ color: "green", fontWeight: "600" }}>{verifyMsg}</p>
-              )}
-              {verifyState === "fail" && (
-                <p style={{ color: "crimson" }}>{verifyMsg}</p>
-              )}
+              {verifyState === "ok" && <p style={{ color:"green", fontWeight:600 }}>{verifyMsg}</p>}
+              {verifyState === "fail" && <p style={{ color:"crimson" }}>{verifyMsg}</p>}
+            </div>
 
-              <button
-                type="submit"
-                disabled={!canSubmit}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  background: canSubmit ? "#007bff" : "#ccc",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "5px",
-                  fontSize: "16px",
-                  cursor: canSubmit ? "pointer" : "not-allowed",
-                  marginTop: "15px",
-                }}
-              >
-                Submit Pre-Check-In
-              </button>
-            </form>
+            <button type="button" onClick={handleSubmit} disabled={!canSubmit} style={{ width:"100%", padding:10, background:canSubmit ? "#007bff" : "#ccc", color:"#fff", border:"none", borderRadius:5 }}>
+              Submit Pre-Check-In
+            </button>
           </>
         ) : (
-          <h3 style={{ color: "green", textAlign: "center" }}>
-            Thank you! Your pre-check-in has been submitted.
-          </h3>
+          <h3 style={{ color:"green", textAlign:"center" }}>Thank you! Your pre-check-in has been submitted.</h3>
         )}
       </div>
     </div>
