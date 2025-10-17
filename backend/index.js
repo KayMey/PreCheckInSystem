@@ -32,25 +32,24 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://nimble-kangaroo-5dfc99.netlify.app",
 ];
+
 const corsOptions = {
   origin(origin, cb) {
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
     return cb(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "Accept", "Origin"],
-  credentials: false, // no cookies
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,
   optionsSuccessStatus: 204,
 };
+
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(bodyParser.json());
 
 /* ---------- File uploads ---------- */
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB guard
-});
+const upload = multer({ storage: multer.memoryStorage() });
 
 /* ---------- Helpers ---------- */
 async function getBookingById(id) {
@@ -61,21 +60,6 @@ async function getBookingById(id) {
     .single();
   if (error || !data) throw new Error("Booking not found");
   return data;
-}
-
-/* Ensure bucket exists (nice to have) */
-async function ensureBucket(name) {
-  try {
-    const { data: list } = await supabase.storage.listBuckets();
-    if (!Array.isArray(list) || !list.find((b) => b.name === name)) {
-      // create public bucket
-      await supabase.storage.createBucket(name, { public: true });
-      console.log(`Created storage bucket: ${name}`);
-    }
-  } catch (e) {
-    // non-fatal: continue; upload will still throw if it truly doesn't exist
-    console.warn("Bucket check/create skipped:", e.message);
-  }
 }
 
 /* ======================== ROUTES ======================= */
@@ -114,7 +98,6 @@ app.post("/bookings", async (req, res) => {
 
     const preCheckinLink = `${process.env.FRONTEND_URL}/precheckin/${data.id}`;
 
-    // Best-effort SMS; don't fail booking if SMS fails
     if (CLICKATELL_API_KEY && cellphone) {
       try {
         const smsResponse = await axios.get(CLICKATELL_URL, {
@@ -134,19 +117,18 @@ app.post("/bookings", async (req, res) => {
     res.status(201).json({ booking: data });
   } catch (err) {
     console.error("Error creating booking:", err);
-    res.status(500).json({ error: err.message || "Create booking failed" });
+    res.status(500).json({ error: err.message });
   }
 });
 
-/** List bookings (+flatten dropoff_name & license_photo_url) */
+/** List bookings (+flatten dropoff_name & license_photo_url from dropoffs) */
 app.get("/bookings", async (req, res) => {
   try {
     const { status, date } = req.query;
 
     let q = supabase
       .from("bookings")
-      .select(
-        `
+      .select(`
         id,
         booking_name,
         firstname,
@@ -156,8 +138,7 @@ app.get("/bookings", async (req, res) => {
         schedule_time,
         status,
         dropoffs(first_name, surname, license_url)
-      `
-      )
+      `)
       .order("schedule_date", { ascending: true })
       .order("schedule_time", { ascending: true });
 
@@ -172,14 +153,14 @@ app.get("/bookings", async (req, res) => {
       return {
         ...r,
         dropoff_name: d ? `${d.first_name || ""} ${d.surname || ""}`.trim() : null,
-        license_photo_url: d?.license_url || null,
+        license_photo_url: d?.license_url || null, // for UI convenience only
       };
     });
 
     res.json(rows);
   } catch (err) {
     console.error("Error fetching bookings:", err);
-    res.status(500).json({ error: err.message || "Fetch bookings failed" });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -194,17 +175,14 @@ app.get("/bookings/:id", async (req, res) => {
   }
 });
 
-/** Pre-check-in (confirm|update) + upload licence */
+/** Pre-check-in (confirm|update) + upload licence (no write to bookings.license_photo_url) */
 app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) => {
   try {
     const { id } = req.params;
-    const action = String(req.body.action || "").toLowerCase();
+    const action = String(req.body.action || "").toLowerCase(); // 'confirm' | 'update'
     if (!["confirm", "update"].includes(action)) {
       return res.status(400).json({ error: "Missing or invalid 'action' (confirm|update)" });
     }
-
-    // Diagnostics
-    console.log("Precheckin -> booking id:", id, "action:", action, "file?:", !!req.file);
 
     // 1) Get booking
     const booking = await getBookingById(id);
@@ -264,9 +242,7 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
     // 4) Upload licence image if present
     let licenseUrl = null;
     if (req.file) {
-      await ensureBucket(LICENSES_BUCKET);
-
-      const safeExt = path.extname(req.file.originalname || "").toLowerCase() || ".jpg";
+      const safeExt = (path.extname(req.file.originalname || "").toLowerCase()) || ".jpg";
       const filename = `ids/${booking.id}/${Date.now()}${safeExt}`;
 
       const { error: uploadErr } = await supabase.storage
@@ -275,10 +251,7 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
           contentType: req.file.mimetype || "image/jpeg",
           upsert: true,
         });
-      if (uploadErr) {
-        console.error("Storage upload error:", uploadErr);
-        return res.status(500).json({ error: `Storage upload failed: ${uploadErr.message || uploadErr.error || "unknown"}` });
-      }
+      if (uploadErr) throw uploadErr;
 
       const { data: pub } = supabase.storage.from(LICENSES_BUCKET).getPublicUrl(filename);
       licenseUrl = pub?.publicUrl || null;
@@ -290,13 +263,10 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
       if (updDrop) throw updDrop;
     }
 
-    // 5) Mark booking as prechecked (keep legacy column for UI)
+    // 5) Mark booking as prechecked (no write to deleted column)
     const { error: updBooking } = await supabase
       .from("bookings")
-      .update({
-        status: "prechecked",
-        license_photo_url: licenseUrl ?? booking.license_photo_url ?? null,
-      })
+      .update({ status: "prechecked" })
       .eq("id", booking.id);
     if (updBooking) throw updBooking;
 
@@ -329,7 +299,7 @@ app.put("/bookings/:id/precheckin", upload.single("license"), async (req, res) =
     });
   } catch (err) {
     console.error("Error during pre-check-in:", err);
-    res.status(500).json({ error: err.message || "Pre-check-in failed" });
+    res.status(500).json({ error: err.message });
   }
 });
 
